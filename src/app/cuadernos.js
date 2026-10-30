@@ -6,23 +6,12 @@ import {
   Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import {
   BottomBar,
-  StudyButton,
   colors,
 } from '../components/StudyUI';
 
-const materias = [
-  'Teatro',
-  'Matemáticas',
-  'Estudios filosofales',
-  'Cocina',
-];
-
 export default function CuadernosScreen() {
-  const router = useRouter();
-
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
@@ -43,30 +32,7 @@ export default function CuadernosScreen() {
           </Pressable>
         </View>
 
-        <Text style={styles.description}>
-          ¿Qué quieres estudiar hoy?
-        </Text>
-
-        <View style={styles.list}>
-          {materias.map((materia, index) => (
-            <StudyButton
-              key={materia}
-              title={materia}
-              icon={[
-                'theater',
-                'calculator-outline',
-                'book-outline',
-                'restaurant-outline',
-              ][index]}
-              onPress={() =>
-                router.push({
-                  pathname: '/materia',
-                  params: { subject: materia },
-                })
-              }
-            />
-          ))}
-        </View>
+        <Text style={styles.emptyState}>No hay cuadernos creados</Text>
 
         <View style={styles.bottom}>
           <BottomBar active="notebooks" />
@@ -104,14 +70,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  description: {
+  emptyState: {
     marginTop: 14,
-    marginBottom: 28,
     fontSize: 15,
     color: colors.muted,
-  },
-  list: {
-    marginTop: 4,
   },
   bottom: {
     marginTop: 'auto',
