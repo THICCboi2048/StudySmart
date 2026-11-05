@@ -52,7 +52,7 @@ export function BottomBar({ active = 'home', showAdd = true }) {
       ? {
           key: 'add',
           icon: 'add',
-          action: () => {},
+          action: () => router.push('/creacion'),
           label: 'Añadir',
         }
       : {
