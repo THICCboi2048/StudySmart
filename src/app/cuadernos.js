@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   View,
   Text,
@@ -5,6 +6,7 @@ import {
   SafeAreaView,
   Pressable,
   ScrollView,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -14,7 +16,15 @@ import {
 import { useNotebooks } from '../context/NotebookContext';
 
 export default function CuadernosScreen() {
-  const { notebooks } = useNotebooks();
+  const { notebooks, deleteNotebook } = useNotebooks();
+  const [notebookToDelete, setNotebookToDelete] = useState(null);
+
+  function confirmarEliminacion() {
+    if (!notebookToDelete) return;
+
+    deleteNotebook(notebookToDelete.id);
+    setNotebookToDelete(null);
+  }
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -49,7 +59,7 @@ export default function CuadernosScreen() {
                 key={notebook.id}
                 style={styles.notebookCard}
                 accessibilityRole="text"
-                accessibilityLabel={`Cuaderno ${notebook.name}, próximamente disponible`}
+                accessibilityLabel={`Cuaderno ${notebook.name}`}
               >
                 <Ionicons
                   name="book-outline"
@@ -57,6 +67,22 @@ export default function CuadernosScreen() {
                   color={colors.purple}
                 />
                 <Text style={styles.notebookName}>{notebook.name}</Text>
+                <Pressable
+                  onPress={() => setNotebookToDelete(notebook)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Eliminar cuaderno ${notebook.name}`}
+                  hitSlop={8}
+                  style={({ pressed }) => [
+                    styles.deleteButton,
+                    pressed && styles.deleteButtonPressed,
+                  ]}
+                >
+                  <Ionicons
+                    name="trash-outline"
+                    size={21}
+                    color={colors.muted}
+                  />
+                </Pressable>
               </View>
             ))
           )}
@@ -66,6 +92,46 @@ export default function CuadernosScreen() {
           <BottomBar active="notebooks" />
         </View>
       </View>
+
+      <Modal
+        visible={notebookToDelete !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setNotebookToDelete(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.confirmationCard}>
+            <Text style={styles.confirmationTitle}>Eliminar cuaderno</Text>
+            <Text style={styles.confirmationMessage}>
+              ¿Quieres eliminar "{notebookToDelete?.name}"?
+            </Text>
+            <View style={styles.confirmationActions}>
+              <Pressable
+                onPress={() => setNotebookToDelete(null)}
+                accessibilityRole="button"
+                accessibilityLabel="Cancelar eliminación"
+                style={({ pressed }) => [
+                  styles.cancelButton,
+                  pressed && styles.confirmationButtonPressed,
+                ]}
+              >
+                <Text style={styles.cancelButtonText}>Cancelar</Text>
+              </Pressable>
+              <Pressable
+                onPress={confirmarEliminacion}
+                accessibilityRole="button"
+                accessibilityLabel="Confirmar eliminación"
+                style={({ pressed }) => [
+                  styles.confirmButton,
+                  pressed && styles.confirmationButtonPressed,
+                ]}
+              >
+                <Text style={styles.confirmButtonText}>Eliminar</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -130,6 +196,75 @@ const styles = StyleSheet.create({
     color: colors.dark,
     fontSize: 16,
     fontWeight: '600',
+  },
+  deleteButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+  },
+  deleteButtonPressed: {
+    backgroundColor: colors.lavender,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  confirmationCard: {
+    width: '100%',
+    maxWidth: 380,
+    padding: 24,
+    backgroundColor: colors.white,
+    borderRadius: 22,
+  },
+  confirmationTitle: {
+    color: colors.dark,
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  confirmationMessage: {
+    marginTop: 10,
+    color: colors.muted,
+    fontSize: 16,
+    lineHeight: 23,
+  },
+  confirmationActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+    marginTop: 24,
+  },
+  cancelButton: {
+    minHeight: 44,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+  },
+  confirmButton: {
+    minHeight: 44,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.purple,
+    borderRadius: 12,
+  },
+  cancelButtonText: {
+    color: colors.muted,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  confirmButtonText: {
+    color: colors.white,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  confirmationButtonPressed: {
+    opacity: 0.75,
   },
   bottom: {
     marginTop: 'auto',

@@ -12,8 +12,14 @@ export function NotebookProvider({ children }) {
     ]);
   }
 
+  function deleteNotebook(notebookId) {
+    setNotebooks((currentNotebooks) =>
+      currentNotebooks.filter((notebook) => notebook.id !== notebookId),
+    );
+  }
+
   return (
-    <NotebookContext.Provider value={{ notebooks, addNotebook }}>
+    <NotebookContext.Provider value={{ notebooks, addNotebook, deleteNotebook }}>
       {children}
     </NotebookContext.Provider>
   );
