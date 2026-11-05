@@ -1,14 +1,16 @@
+
 import {
   View,
   Text,
   StyleSheet,
   SafeAreaView,
 } from 'react-native';
+
 import { Ionicons } from '@expo/vector-icons';
 import { BottomBar, colors } from '../components/StudyUI';
 
 export default function HomeScreen() {
-  const diasRacha = 7;
+  const diasRacha: number = 7;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -19,6 +21,7 @@ export default function HomeScreen() {
             size={30}
             color={colors.purple}
           />
+
           <Text style={styles.logo}>StudySmart</Text>
         </View>
 
@@ -26,6 +29,7 @@ export default function HomeScreen() {
           <Text style={styles.subtitle}>
             ¡Cada día cuenta!
           </Text>
+
           <Text style={styles.description}>
             Sigue aprendiendo a tu ritmo.
           </Text>

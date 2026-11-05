@@ -1,3 +1,4 @@
+
 import {
   View,
   Text,
@@ -5,34 +6,38 @@ import {
   SafeAreaView,
   Pressable,
 } from 'react-native';
+
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
-import { BottomBar, colors } from '../components/StudyUI';
 import { useState } from 'react';
 
-const tarjetas = [
+import { BottomBar, colors } from '../components/StudyUI';
+
+const tarjetas: string[] = [
   'Escenario en H',
   'Escenario a la italiana',
   'Escenario circular',
 ];
 
 export default function FlashcardsScreen() {
-  const params = useLocalSearchParams();
+  const params = useLocalSearchParams<{
+    title?: string | string[];
+  }>();
 
   const title = Array.isArray(params.title)
     ? params.title[0]
     : params.title || 'Tipos de escenarios';
 
-  const [indice, setIndice] = useState(0);
+  const [indice, setIndice] = useState<number>(0);
 
-  function anterior() {
-    setIndice((actual) =>
+  function anterior(): void {
+    setIndice((actual: number) =>
       actual === 0 ? tarjetas.length - 1 : actual - 1
     );
   }
 
-  function siguiente() {
-    setIndice((actual) =>
+  function siguiente(): void {
+    setIndice((actual: number) =>
       (actual + 1) % tarjetas.length
     );
   }

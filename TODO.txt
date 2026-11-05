@@ -1,2 +1,5 @@
 hacer que la racha de inicio de sesón funcione correctamente
 todo omg
+
+boton para regresar de la flashcard
+poder abrir notas

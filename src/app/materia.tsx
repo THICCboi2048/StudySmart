@@ -1,10 +1,13 @@
+
 import {
   View,
   Text,
   StyleSheet,
   SafeAreaView,
 } from 'react-native';
+
 import { useLocalSearchParams, useRouter } from 'expo-router';
+
 import {
   BottomBar,
   StudyButton,
@@ -13,13 +16,16 @@ import {
 
 export default function MateriaScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams();
+
+  const params = useLocalSearchParams<{
+    subject?: string | string[];
+  }>();
 
   const subject = Array.isArray(params.subject)
     ? params.subject[0]
     : params.subject || 'Teatro';
 
-  const flashcards = [
+  const flashcards: string[] = [
     'Tipos de escenarios',
     'Personas importantes del teatro',
   ];
@@ -35,7 +41,7 @@ export default function MateriaScreen() {
           FLASHCARDS
         </Text>
 
-        {flashcards.map((title) => (
+        {flashcards.map((title: string) => (
           <StudyButton
             key={title}
             title={title}

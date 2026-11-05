@@ -1,3 +1,4 @@
+
 import {
   View,
   Text,
@@ -5,19 +6,28 @@ import {
   SafeAreaView,
   Pressable,
 } from 'react-native';
+
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+
 import {
   BottomBar,
   StudyButton,
   colors,
 } from '../components/StudyUI';
 
-const materias = [
+const materias: string[] = [
   'Teatro',
   'Matemáticas',
   'Estudios filosofales',
   'Cocina',
+];
+
+const iconos: React.ComponentProps<typeof Ionicons>['name'][] = [
+  'theater',
+  'calculator-outline',
+  'book-outline',
+  'restaurant-outline',
 ];
 
 export default function CuadernosScreen() {
@@ -52,12 +62,7 @@ export default function CuadernosScreen() {
             <StudyButton
               key={materia}
               title={materia}
-              icon={[
-                'theater',
-                'calculator-outline',
-                'book-outline',
-                'restaurant-outline',
-              ][index]}
+              icon={iconos[index]}
               onPress={() =>
                 router.push({
                   pathname: '/materia',
