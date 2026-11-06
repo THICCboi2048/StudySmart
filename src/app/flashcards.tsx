@@ -17,11 +17,13 @@ const tarjetas = [
 ];
 
 export default function FlashcardsScreen() {
-  const params = useLocalSearchParams();
+const params = useLocalSearchParams();
 
-  const title = Array.isArray(params.title)
-    ? params.title[0]
-    : params.title || 'Tipos de escenarios';
+const title = Array.isArray(params.title)
+  ? params.title[0]
+  : params.title || 'Tipos de escenarios';
+
+const notebookId = Array.isArray(params.id) ? params.id[0] : params.id;
 
   const [indice, setIndice] = useState(0);
 
