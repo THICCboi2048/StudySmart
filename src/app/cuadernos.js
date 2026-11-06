@@ -21,12 +21,12 @@ export default function CuadernosScreen() {
   const { notebooks, deleteNotebook } = useNotebooks();
   const [notebookToDelete, setNotebookToDelete] = useState(null);
 
-function abrirCuaderno(notebook: Notebook) {
-  router.push({
-    pathname: '/detalle-cuaderno',
-    params: { id: notebook.id },
-  });
-}
+  function abrirCuaderno(notebook: Notebook) {
+    router.push({
+      pathname: '/detalle-cuaderno',
+      params: { id: notebook.id },
+    });
+  }
 
   function confirmarEliminacion() {
     if (!notebookToDelete) return;
@@ -42,7 +42,7 @@ function abrirCuaderno(notebook: Notebook) {
           <Text style={styles.title}>Cuadernos</Text>
 
           <Pressable
-            onPress={() => {}}
+            onPress={() => { }}
             accessibilityLabel="Configuración"
             accessibilityRole="button"
             style={styles.settings}
@@ -63,34 +63,34 @@ function abrirCuaderno(notebook: Notebook) {
           {notebooks.length === 0 ? (
             <Text style={styles.emptyState}>No hay cuadernos creados</Text>
           ) : (notebooks.map((notebook) => (
-  <View key={notebook.id} style={styles.notebookCard}>
-    <Pressable
-      onPress={() => abrirCuaderno(notebook)}
-      accessibilityRole="button"
-      accessibilityLabel={`Abrir cuaderno ${notebook.name}`}
-      style={({ pressed }) => [
-        styles.notebookOpen,
-        pressed && styles.notebookCardPressed,
-      ]}
-    >
-      <Ionicons name="book-outline" size={23} color={colors.purple} />
-      <Text style={styles.notebookName}>{notebook.name}</Text>
-    </Pressable>
+            <View key={notebook.id} style={styles.notebookCard}>
+              <Pressable
+                onPress={() => abrirCuaderno(notebook)}
+                accessibilityRole="button"
+                accessibilityLabel={`Abrir cuaderno ${notebook.name}`}
+                style={({ pressed }) => [
+                  styles.notebookOpen,
+                  pressed && styles.notebookCardPressed,
+                ]}
+              >
+                <Ionicons name="book-outline" size={23} color={colors.purple} />
+                <Text style={styles.notebookName}>{notebook.name}</Text>
+              </Pressable>
 
-    <Pressable
-      onPress={() => setNotebookToDelete(notebook)}
-      accessibilityRole="button"
-      accessibilityLabel={`Eliminar cuaderno ${notebook.name}`}
-      hitSlop={8}
-      style={({ pressed }) => [
-        styles.deleteButton,
-        pressed && styles.deleteButtonPressed,
-      ]}
-    >
-      <Ionicons name="trash-outline" size={21} color={colors.muted} />
-    </Pressable>
-  </View>
-)))}
+              <Pressable
+                onPress={() => setNotebookToDelete(notebook)}
+                accessibilityRole="button"
+                accessibilityLabel={`Eliminar cuaderno ${notebook.name}`}
+                hitSlop={8}
+                style={({ pressed }) => [
+                  styles.deleteButton,
+                  pressed && styles.deleteButtonPressed,
+                ]}
+              >
+                <Ionicons name="trash-outline" size={21} color={colors.muted} />
+              </Pressable>
+            </View>
+          )))}
         </ScrollView>
 
         <View style={styles.bottom}>
@@ -283,6 +283,6 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   notebookCardPressed: {
-  opacity: 0.7,
-},
+    opacity: 0.7,
+  },
 });
