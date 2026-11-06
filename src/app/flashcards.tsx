@@ -9,35 +9,47 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
 import { BottomBar, colors } from '../components/StudyUI';
 import { useState } from 'react';
-
-const tarjetas = [
-  'Escenario en H',
-  'Escenario a la italiana',
-  'Escenario circular',
-];
+import { useNotebooks } from '../context/NotebookContext';  // añadir
 
 export default function FlashcardsScreen() {
-const params = useLocalSearchParams();
+  const params = useLocalSearchParams();
+  const { getNotebook } = useNotebooks();
 
-const title = Array.isArray(params.title)
-  ? params.title[0]
-  : params.title || 'Tipos de escenarios';
+  const notebookId = Array.isArray(params.id) ? params.id[0] : params.id;
+  const flashcardId = Array.isArray(params.flashcardId)
+    ? params.flashcardId[0]
+    : params.flashcardId;
 
-const notebookId = Array.isArray(params.id) ? params.id[0] : params.id;
+  const notebook = getNotebook(notebookId);
+  const set = notebook?.flashcardSets.find((s) => s.id === flashcardId);
+
+  const title = set?.name ?? 'Flashcards';
+  const tarjetas = set?.cards ?? [];
 
   const [indice, setIndice] = useState(0);
 
   function anterior() {
-    setIndice((actual) =>
-      actual === 0 ? tarjetas.length - 1 : actual - 1
-    );
+    setIndice((actual) => (actual === 0 ? tarjetas.length - 1 : actual - 1));
   }
 
   function siguiente() {
-    setIndice((actual) =>
-      (actual + 1) % tarjetas.length
+    setIndice((actual) => (actual + 1) % tarjetas.length);
+  }
+
+  if (tarjetas.length === 0) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.container}>
+          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.counter}>Este set no tiene tarjetas todavía</Text>
+          <View style={styles.bottom}>
+            <BottomBar active="notebooks" />
+          </View>
+        </View>
+      </SafeAreaView>
     );
   }
+
 
   return (
     <SafeAreaView style={styles.safe}>

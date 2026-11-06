@@ -15,9 +15,11 @@ export default function RootLayout() {
       >
         <Stack.Screen name="index" />
         <Stack.Screen name="cuadernos" />
+        <Stack.Screen name="detalle-cuaderno" />
         <Stack.Screen name="creacion" />
         <Stack.Screen name="materia" />
         <Stack.Screen name="flashcards" />
+
       </Stack>
     </NotebookProvider>
   );

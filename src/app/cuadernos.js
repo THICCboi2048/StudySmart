@@ -62,20 +62,20 @@ export default function CuadernosScreen() {
         >
           {notebooks.length === 0 ? (
             <Text style={styles.emptyState}>No hay cuadernos creados</Text>
-          ) : (
-            notebooks.map((notebook) => (
-  <Pressable
-    key={notebook.id}
-    onPress={() => abrirCuaderno(notebook)}
-    accessibilityRole="button"
-    accessibilityLabel={`Abrir cuaderno ${notebook.name}`}
-    style={({ pressed }) => [
-      styles.notebookCard,
-      pressed && styles.notebookCardPressed,
-    ]}
-  >
-    <Ionicons name="book-outline" size={23} color={colors.purple} />
-    <Text style={styles.notebookName}>{notebook.name}</Text>
+          ) : (notebooks.map((notebook) => (
+  <View key={notebook.id} style={styles.notebookCard}>
+    <Pressable
+      onPress={() => abrirCuaderno(notebook)}
+      accessibilityRole="button"
+      accessibilityLabel={`Abrir cuaderno ${notebook.name}`}
+      style={({ pressed }) => [
+        styles.notebookOpen,
+        pressed && styles.notebookCardPressed,
+      ]}
+    >
+      <Ionicons name="book-outline" size={23} color={colors.purple} />
+      <Text style={styles.notebookName}>{notebook.name}</Text>
+    </Pressable>
 
     <Pressable
       onPress={() => setNotebookToDelete(notebook)}
@@ -89,7 +89,7 @@ export default function CuadernosScreen() {
     >
       <Ionicons name="trash-outline" size={21} color={colors.muted} />
     </Pressable>
-  </Pressable>
+  </View>
 )))}
         </ScrollView>
 
@@ -184,17 +184,24 @@ const styles = StyleSheet.create({
   },
   notebookCard: {
     minHeight: 66,
-    paddingHorizontal: 18,
+    paddingLeft: 18,
+    paddingRight: 13,
     backgroundColor: colors.white,
     borderRadius: 18,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
     elevation: 2,
     shadowColor: '#4E342E',
     shadowOpacity: 0.08,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },
+  },
+  notebookOpen: {
+    flex: 1,
+    minHeight: 66,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   notebookName: {
     flex: 1,
