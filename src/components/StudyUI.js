@@ -38,7 +38,12 @@ export function StudyButton({ title, onPress, icon }) {
   );
 }
 
-export function BottomBar({ active = 'home', showAdd = true }) {
+export function BottomBar({
+  active = 'home',
+  showAdd = true,
+  onAdd,
+  addLabel = 'Añadir',
+}) {
   const router = useRouter();
 
   const items = [
@@ -49,18 +54,18 @@ export function BottomBar({ active = 'home', showAdd = true }) {
       label: 'Inicio',
     },
     showAdd
-      ? {
-          key: 'add',
-          icon: 'add',
-          action: () => router.push('/creacion'),
-          label: 'Añadir',
-        }
-      : {
-          key: 'notebooks',
-          icon: 'create-outline',
-          action: () => router.push('/cuadernos'),
-          label: 'Cuadernos',
-        },
+    ? {
+        key: 'add',
+        icon: 'add',
+        action: onAdd ?? (() => router.push('/creacion')),
+        label: addLabel,
+      }
+    : {
+        key: 'notebooks',
+        icon: 'create-outline',
+        action: () => router.push('/cuadernos'),
+        label: 'Cuadernos',
+      },
     {
       key: 'profile',
       icon: 'person-circle-outline',

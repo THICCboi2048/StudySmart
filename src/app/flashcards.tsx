@@ -6,12 +6,13 @@ import {
   Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { BottomBar, colors } from '../components/StudyUI';
 import { useState } from 'react';
 import { useNotebooks } from '../context/NotebookContext';  // añadir
 
 export default function FlashcardsScreen() {
+  const router = useRouter(); 
   const params = useLocalSearchParams();
   const { getNotebook } = useNotebooks();
 
@@ -43,7 +44,13 @@ export default function FlashcardsScreen() {
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.counter}>Este set no tiene tarjetas todavía</Text>
           <View style={styles.bottom}>
-            <BottomBar active="notebooks" />
+            <BottomBar
+              active="notebooks"
+              addLabel="Flashcard"
+              onAdd={() =>
+                router.push({ pathname: '/crear-flashcard', params: { id: notebookId } })
+              }
+            />
           </View>
         </View>
       </SafeAreaView>

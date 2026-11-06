@@ -19,6 +19,7 @@ export default function RootLayout() {
         <Stack.Screen name="creacion" />
         <Stack.Screen name="materia" />
         <Stack.Screen name="flashcards" />
+        <Stack.Screen name="crear-flashcard" />
 
       </Stack>
     </NotebookProvider>

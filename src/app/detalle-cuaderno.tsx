@@ -104,7 +104,13 @@ function abrirFlashcard(flashcard: FlashcardSet) {
         </ScrollView>
 
         <View style={styles.bottom}>
-          <BottomBar active="notebooks" />
+          <BottomBar
+            active="notebooks"
+            addLabel="Flashcard"
+            onAdd={() =>
+                router.push({ pathname: '/crear-flashcard', params: { id } })
+            }
+            />
         </View>
       </View>
     </SafeAreaView>
