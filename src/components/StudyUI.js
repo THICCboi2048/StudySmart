@@ -65,6 +65,7 @@ export function BottomBar({
   showAdd = true,
   onAdd,
   addLabel = 'Añadir',
+  addIcon = 'add',
 }) {
   const router = useRouter();
 
@@ -78,7 +79,7 @@ export function BottomBar({
     showAdd
     ? {
         key: 'add',
-        icon: 'add',
+        icon: addIcon,
         action: onAdd ?? (() => router.push('/creacion')),
         label: addLabel,
       }

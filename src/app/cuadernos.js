@@ -7,6 +7,7 @@ import {
   Pressable,
   ScrollView,
   Modal,
+  vibration,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -30,7 +31,7 @@ export default function CuadernosScreen() {
 
   function confirmarEliminacion() {
     if (!notebookToDelete) return;
-
+    vibration.vibrate(50);
     deleteNotebook(notebookToDelete.id);
     setNotebookToDelete(null);
   }

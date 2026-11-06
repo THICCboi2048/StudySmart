@@ -19,8 +19,11 @@ export default function CreacionScreen() {
   function crearCuaderno() {
     const nombre = nombreCuaderno.trim();
     if (!nombre) return;
-
     addNotebook(nombre);
+    router.replace('/cuadernos');
+  }
+
+  function cancelarCreacion() {
     router.replace('/cuadernos');
   }
 
@@ -57,7 +60,12 @@ export default function CreacionScreen() {
         </View>
 
         <View style={styles.bottom}>
-          <BottomBar active="add" />
+          <BottomBar
+            active="add"
+            onAdd={cancelarCreacion}
+            addLabel="Cancelar"
+            addIcon="close"
+          />
         </View>
       </View>
     </SafeAreaView>
