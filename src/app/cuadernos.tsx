@@ -1,27 +1,21 @@
-
+import { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   SafeAreaView,
   Pressable,
+  ScrollView,
+  Modal,
 } from 'react-native';
 
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-
 import {
   BottomBar,
-  StudyButton,
   colors,
 } from '../components/StudyUI';
-
-const materias: string[] = [
-  'Teatro',
-  'Matemáticas',
-  'Estudios filosofales',
-  'Cocina',
-];
+import { useNotebooks } from '../context/NotebookContext';
+import { useRouter } from 'expo-router';
 
 const iconos: React.ComponentProps<typeof Ionicons>['name'][] = [
   'theater',
@@ -32,6 +26,22 @@ const iconos: React.ComponentProps<typeof Ionicons>['name'][] = [
 
 export default function CuadernosScreen() {
   const router = useRouter();
+  const { notebooks, deleteNotebook } = useNotebooks();
+  const [notebookToDelete, setNotebookToDelete] = useState(null);
+
+  function abrirCuaderno(notebook: Notebook) {
+    router.push({
+      pathname: '/detalle-cuaderno',
+      params: { id: notebook.id },
+    });
+  }
+
+  function confirmarEliminacion() {
+    if (!notebookToDelete) return;
+
+    deleteNotebook(notebookToDelete.id);
+    setNotebookToDelete(null);
+  }
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -40,7 +50,7 @@ export default function CuadernosScreen() {
           <Text style={styles.title}>Cuadernos</Text>
 
           <Pressable
-            onPress={() => {}}
+            onPress={() => { }}
             accessibilityLabel="Configuración"
             accessibilityRole="button"
             style={styles.settings}
@@ -53,30 +63,88 @@ export default function CuadernosScreen() {
           </Pressable>
         </View>
 
-        <Text style={styles.description}>
-          ¿Qué quieres estudiar hoy?
-        </Text>
+        <ScrollView
+          style={styles.notebooksList}
+          contentContainerStyle={styles.notebooksContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          {notebooks.length === 0 ? (
+            <Text style={styles.emptyState}>No hay cuadernos creados</Text>
+          ) : (notebooks.map((notebook) => (
+            <View key={notebook.id} style={styles.notebookCard}>
+              <Pressable
+                onPress={() => abrirCuaderno(notebook)}
+                accessibilityRole="button"
+                accessibilityLabel={`Abrir cuaderno ${notebook.name}`}
+                style={({ pressed }) => [
+                  styles.notebookOpen,
+                  pressed && styles.notebookCardPressed,
+                ]}
+              >
+                <Ionicons name="book-outline" size={23} color={colors.purple} />
+                <Text style={styles.notebookName}>{notebook.name}</Text>
+              </Pressable>
 
-        <View style={styles.list}>
-          {materias.map((materia, index) => (
-            <StudyButton
-              key={materia}
-              title={materia}
-              icon={iconos[index]}
-              onPress={() =>
-                router.push({
-                  pathname: '/materia',
-                  params: { subject: materia },
-                })
-              }
-            />
-          ))}
-        </View>
+              <Pressable
+                onPress={() => setNotebookToDelete(notebook)}
+                accessibilityRole="button"
+                accessibilityLabel={`Eliminar cuaderno ${notebook.name}`}
+                hitSlop={8}
+                style={({ pressed }) => [
+                  styles.deleteButton,
+                  pressed && styles.deleteButtonPressed,
+                ]}
+              >
+                <Ionicons name="trash-outline" size={21} color={colors.muted} />
+              </Pressable>
+            </View>
+          )))}
+        </ScrollView>
 
         <View style={styles.bottom}>
           <BottomBar active="notebooks" />
         </View>
       </View>
+
+      <Modal
+        visible={notebookToDelete !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setNotebookToDelete(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.confirmationCard}>
+            <Text style={styles.confirmationTitle}>Eliminar cuaderno</Text>
+            <Text style={styles.confirmationMessage}>
+              ¿Quieres eliminar "{notebookToDelete?.name}"?
+            </Text>
+            <View style={styles.confirmationActions}>
+              <Pressable
+                onPress={() => setNotebookToDelete(null)}
+                accessibilityRole="button"
+                accessibilityLabel="Cancelar eliminación"
+                style={({ pressed }) => [
+                  styles.cancelButton,
+                  pressed && styles.confirmationButtonPressed,
+                ]}
+              >
+                <Text style={styles.cancelButtonText}>Cancelar</Text>
+              </Pressable>
+              <Pressable
+                onPress={confirmarEliminacion}
+                accessibilityRole="button"
+                accessibilityLabel="Confirmar eliminación"
+                style={({ pressed }) => [
+                  styles.confirmButton,
+                  pressed && styles.confirmationButtonPressed,
+                ]}
+              >
+                <Text style={styles.confirmButtonText}>Eliminar</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -109,17 +177,120 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  description: {
+  emptyState: {
     marginTop: 14,
-    marginBottom: 28,
     fontSize: 15,
     color: colors.muted,
   },
-  list: {
-    marginTop: 4,
+  notebooksList: {
+    flex: 1,
+    marginTop: 14,
+  },
+  notebooksContent: {
+    gap: 12,
+    paddingBottom: 16,
+  },
+  notebookCard: {
+    minHeight: 66,
+    paddingLeft: 18,
+    paddingRight: 13,
+    backgroundColor: colors.white,
+    borderRadius: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#4E342E',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+  },
+  notebookOpen: {
+    flex: 1,
+    minHeight: 66,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  notebookName: {
+    flex: 1,
+    color: colors.dark,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  deleteButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+  },
+  deleteButtonPressed: {
+    backgroundColor: colors.lavender,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  confirmationCard: {
+    width: '100%',
+    maxWidth: 380,
+    padding: 24,
+    backgroundColor: colors.white,
+    borderRadius: 22,
+  },
+  confirmationTitle: {
+    color: colors.dark,
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  confirmationMessage: {
+    marginTop: 10,
+    color: colors.muted,
+    fontSize: 16,
+    lineHeight: 23,
+  },
+  confirmationActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+    marginTop: 24,
+  },
+  cancelButton: {
+    minHeight: 44,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+  },
+  confirmButton: {
+    minHeight: 44,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.purple,
+    borderRadius: 12,
+  },
+  cancelButtonText: {
+    color: colors.muted,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  confirmButtonText: {
+    color: colors.white,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  confirmationButtonPressed: {
+    opacity: 0.75,
   },
   bottom: {
     marginTop: 'auto',
     paddingBottom: 10,
+  },
+  notebookCardPressed: {
+    opacity: 0.7,
   },
 });

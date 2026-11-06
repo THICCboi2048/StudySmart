@@ -65,7 +65,7 @@ export default function MateriaScreen() {
         <StudyButton
           title="Vestuario para el 27"
           icon="document-text-outline"
-          onPress={() => {}}
+          onPress={() => { }}
         />
 
         <View style={styles.bottom}>

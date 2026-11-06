@@ -1,77 +1,103 @@
-
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  Pressable,
-} from 'react-native';
-
+import { View, Text, StyleSheet, SafeAreaView, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-
-import { BottomBar, colors } from '../components/StudyUI';
-
-const tarjetas: string[] = [
-  'Escenario en H',
-  'Escenario a la italiana',
-  'Escenario circular',
-];
+import { BottomBar, ScreenHeader, colors } from '../components/StudyUI';
+import { useNotebooks } from '../context/NotebookContext';
 
 export default function FlashcardsScreen() {
-  const params = useLocalSearchParams<{
-    title?: string | string[];
-  }>();
+  const router = useRouter();
+  const params = useLocalSearchParams();
+  const { getNotebook } = useNotebooks();
 
-  const title = Array.isArray(params.title)
-    ? params.title[0]
-    : params.title || 'Tipos de escenarios';
+  const notebookId = Array.isArray(params.id) ? params.id[0] : params.id;
+  const flashcardId = Array.isArray(params.flashcardId)
+    ? params.flashcardId[0]
+    : params.flashcardId;
 
-  const [indice, setIndice] = useState<number>(0);
+  const notebook = getNotebook(notebookId);
+  const set = notebook?.flashcardSets.find((s) => s.id === flashcardId);
 
-  function anterior(): void {
-    setIndice((actual: number) =>
-      actual === 0 ? tarjetas.length - 1 : actual - 1
+  const title = set?.name ?? 'Flashcards';
+  const tarjetas = set?.cards ?? [];
+
+  const [indice, setIndice] = useState(0);
+  const [verContenido, setVerContenido] = useState(false);
+
+  function anterior() {
+    setVerContenido(false);
+    setIndice((actual) => (actual === 0 ? tarjetas.length - 1 : actual - 1));
+  }
+
+  function siguiente() {
+    setVerContenido(false);
+    setIndice((actual) => (actual + 1) % tarjetas.length);
+  }
+
+  const encabezado = (
+    <ScreenHeader
+      title={title}
+      titleSize={27}
+      onBack={() =>
+        router.navigate({
+          pathname: '/detalle-cuaderno',
+          params: { id: notebookId },
+        })
+      }
+    />
+  );
+
+  const barra = (
+    <View style={styles.bottom}>
+      <BottomBar
+        active="notebooks"
+        addLabel="Flashcard"
+        onAdd={() =>
+          router.push({ pathname: '/crear-flashcard', params: { id: notebookId } })
+        }
+      />
+    </View>
+  );
+
+  if (tarjetas.length === 0) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.container}>
+          {encabezado}
+          <Text style={styles.counter}>Este set no tiene tarjetas todavía</Text>
+          {barra}
+        </View>
+      </SafeAreaView>
     );
   }
 
-  function siguiente(): void {
-    setIndice((actual: number) =>
-      (actual + 1) % tarjetas.length
-    );
-  }
+  const tarjeta = tarjetas[indice];
+  const textoVisible = verContenido ? tarjeta.content : tarjeta.title;
 
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
-        <Text style={styles.title}>{title}</Text>
+        {encabezado}
 
         <Text style={styles.counter}>
           Tarjeta {indice + 1} de {tarjetas.length}
         </Text>
 
+        <View style={styles.card}>
+          <Ionicons name="albums-outline" size={38} color={colors.purple} />
+          <Text style={styles.side}>{verContenido ? 'Contenido' : 'Título'}</Text>
+          <Text style={styles.cardTitle}>{textoVisible || '—'}</Text>
+        </View>
+
         <Pressable
-          onPress={() => {}}
-          style={({ pressed }) => [
-            styles.card,
-            pressed && styles.pressed,
-          ]}
+          onPress={() => setVerContenido((v) => !v)}
           accessibilityRole="button"
-          accessibilityLabel={tarjetas[indice]}
+          accessibilityLabel={verContenido ? 'Mostrar título' : 'Mostrar contenido'}
+          style={({ pressed }) => [styles.flipButton, pressed && styles.pressed]}
         >
-          <Ionicons
-            name="albums-outline"
-            size={38}
-            color={colors.purple}
-          />
-
-          <Text style={styles.cardTitle}>
-            {tarjetas[indice]}
-          </Text>
-
-          <Text style={styles.cardHint}>
-            Pulsa para estudiar este concepto
+          <Ionicons name="swap-horizontal" size={20} color={colors.white} />
+          <Text style={styles.flipText}>
+            {verContenido ? 'Ver título' : 'Ver contenido'}
           </Text>
         </Pressable>
 
@@ -82,11 +108,7 @@ export default function FlashcardsScreen() {
             accessibilityLabel="Tarjeta anterior"
             accessibilityRole="button"
           >
-            <Ionicons
-              name="arrow-back"
-              size={28}
-              color={colors.purple}
-            />
+            <Ionicons name="arrow-back" size={28} color={colors.purple} />
           </Pressable>
 
           <Pressable
@@ -95,42 +117,20 @@ export default function FlashcardsScreen() {
             accessibilityLabel="Tarjeta siguiente"
             accessibilityRole="button"
           >
-            <Ionicons
-              name="arrow-forward"
-              size={28}
-              color={colors.purple}
-            />
+            <Ionicons name="arrow-forward" size={28} color={colors.purple} />
           </Pressable>
         </View>
 
-        <View style={styles.bottom}>
-          <BottomBar active="notebooks" />
-        </View>
+        {barra}
       </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  container: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 24,
-  },
-  title: {
-    fontSize: 27,
-    fontWeight: '800',
-    color: colors.dark,
-  },
-  counter: {
-    fontSize: 14,
-    color: colors.muted,
-    marginTop: 12,
-  },
+  safe: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1, paddingHorizontal: 24, paddingTop: 24 },
+  counter: { fontSize: 14, color: colors.muted, marginTop: 12 },
   card: {
     marginTop: 34,
     minHeight: 250,
@@ -145,26 +145,36 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
   },
+  side: {
+    marginTop: 18,
+    color: colors.muted,
+    fontSize: 13,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
   cardTitle: {
-    marginTop: 24,
+    marginTop: 10,
     fontSize: 22,
     fontWeight: '700',
     color: colors.dark,
     textAlign: 'center',
   },
-  cardHint: {
-    marginTop: 12,
-    color: colors.muted,
-    fontSize: 13,
-    textAlign: 'center',
+  flipButton: {
+    minHeight: 50,
+    marginTop: 20,
+    flexDirection: 'row',
+    gap: 8,
+    backgroundColor: colors.purple,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  pressed: {
-    opacity: 0.8,
-  },
+  flipText: { color: colors.white, fontSize: 16, fontWeight: '700' },
+  pressed: { opacity: 0.8 },
   arrows: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 26,
+    marginTop: 20,
   },
   arrowButton: {
     width: 58,
@@ -174,8 +184,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  bottom: {
-    marginTop: 'auto',
-    paddingBottom: 10,
-  },
+  bottom: { marginTop: 'auto', paddingBottom: 10 },
 });
