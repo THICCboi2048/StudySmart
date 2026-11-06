@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { BottomBar, colors } from '../components/StudyUI';
+import { BottomBar, ScreenHeader, colors } from '../components/StudyUI';
 import { useNotebooks } from '../context/NotebookContext';
 
 type Borrador = { key: string; title: string; content: string };
@@ -61,14 +61,18 @@ export default function CrearFlashcardScreen() {
     addFlashcardSet(notebookId, nombre.trim(), cards);
 
     // Vuelve siempre al menú del cuaderno, sin importar desde dónde se abrió
-    router.navigate({ pathname: '/detalle-cuaderno', params: { id: notebookId } });
+    router.dismissTo({ pathname: '/detalle-cuaderno', params: { id: notebookId } });
   }
 
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
-        <Text style={styles.title}>Nueva flashcard</Text>
-        {notebook && <Text style={styles.subtitle}>en {notebook.name}</Text>}
+
+        <ScreenHeader
+        title="Nueva flashcard"
+        subtitle={notebook ? `en ${notebook.name}` : undefined}
+        onBack={() => router.back()}
+        />
 
         <ScrollView
           style={styles.scroll}
@@ -217,4 +221,12 @@ const styles = StyleSheet.create({
   createButtonText: { color: colors.white, fontSize: 16, fontWeight: '700' },
   pressed: { opacity: 0.8 },
   bottom: { marginTop: 'auto', paddingBottom: 10 },
+    backButton: {
+      width: 46,
+      height: 46,
+      backgroundColor: colors.white,
+      borderRadius: 15,
+      alignItems: 'center',
+      justifyContent: 'center',
+    }
 });

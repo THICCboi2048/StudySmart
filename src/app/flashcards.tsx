@@ -2,7 +2,7 @@ import { View, Text, StyleSheet, SafeAreaView, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { BottomBar, colors } from '../components/StudyUI';
+import { BottomBar, ScreenHeader, colors } from '../components/StudyUI';
 import { useNotebooks } from '../context/NotebookContext';
 
 export default function FlashcardsScreen() {
@@ -34,6 +34,19 @@ export default function FlashcardsScreen() {
     setIndice((actual) => (actual + 1) % tarjetas.length);
   }
 
+  const encabezado = (
+    <ScreenHeader
+      title={title}
+      titleSize={27}
+      onBack={() =>
+        router.navigate({
+          pathname: '/detalle-cuaderno',
+          params: { id: notebookId },
+        })
+      }
+    />
+  );
+
   const barra = (
     <View style={styles.bottom}>
       <BottomBar
@@ -50,7 +63,7 @@ export default function FlashcardsScreen() {
     return (
       <SafeAreaView style={styles.safe}>
         <View style={styles.container}>
-          <Text style={styles.title}>{title}</Text>
+          {encabezado}
           <Text style={styles.counter}>Este set no tiene tarjetas todavía</Text>
           {barra}
         </View>
@@ -64,7 +77,7 @@ export default function FlashcardsScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
-        <Text style={styles.title}>{title}</Text>
+        {encabezado}
 
         <Text style={styles.counter}>
           Tarjeta {indice + 1} de {tarjetas.length}
@@ -117,7 +130,6 @@ export default function FlashcardsScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   container: { flex: 1, paddingHorizontal: 24, paddingTop: 24 },
-  title: { fontSize: 27, fontWeight: '800', color: colors.dark },
   counter: { fontSize: 14, color: colors.muted, marginTop: 12 },
   card: {
     marginTop: 34,

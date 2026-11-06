@@ -16,5 +16,5 @@
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
-, "src/app/creacion.js", "src/app/cuadernos.js", "src/app/index.js", "src/app/materia.js"  ]
+, "src/app/creacion.js", "src/app/cuadernos.tsx", "src/app/index.js", "src/app/materia.js"  ]
 }

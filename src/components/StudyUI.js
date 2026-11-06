@@ -10,7 +10,29 @@ export const colors = {
   white: '#FFFCF7',      // Blanco cálido
   muted: '#8D796B',      // Marrón grisáceo
 };
-
+export function ScreenHeader({ title, subtitle, onBack, titleSize = 29 }) {
+  return (
+    <View>
+      <View style={styles.screenHeader}>
+        <Pressable
+          onPress={onBack}
+          accessibilityRole="button"
+          accessibilityLabel="Volver"
+          style={styles.backButton}
+        >
+          <Ionicons name="arrow-back" size={24} color={colors.dark} />
+        </Pressable>
+        <Text
+          style={[styles.screenTitle, { fontSize: titleSize }]}
+          numberOfLines={1}
+        >
+          {title}
+        </Text>
+      </View>
+      {subtitle ? <Text style={styles.screenSubtitle}>{subtitle}</Text> : null}
+    </View>
+  );
+}
 export function StudyButton({ title, onPress, icon }) {
   return (
     <Pressable
@@ -175,4 +197,27 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 11,
   },
+  screenHeader: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 12,
+},
+backButton: {
+  width: 46,
+  height: 46,
+  backgroundColor: colors.white,
+  borderRadius: 15,
+  alignItems: 'center',
+  justifyContent: 'center',
+},
+screenTitle: {
+  flex: 1,
+  fontWeight: '800',
+  color: colors.dark,
+},
+screenSubtitle: {
+  marginTop: 6,
+  fontSize: 15,
+  color: colors.muted,
+},
 });

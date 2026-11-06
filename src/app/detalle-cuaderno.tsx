@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { BottomBar, colors } from '../components/StudyUI';
+import { BottomBar, ScreenHeader, colors } from '../components/StudyUI';
 
 // TODO: reemplazar por los datos reales (contexto / storage)
 
@@ -38,19 +38,7 @@ function abrirFlashcard(flashcard: FlashcardSet) {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <Pressable
-            onPress={() => router.back()}
-            accessibilityRole="button"
-            accessibilityLabel="Volver a cuadernos"
-            style={styles.backButton}
-          >
-            <Ionicons name="arrow-back" size={24} color={colors.dark} />
-          </Pressable>
-          <Text style={styles.title} numberOfLines={1}>
-            {title}
-          </Text>
-        </View>
+        <ScreenHeader title={title} onBack={() => router.navigate('/cuadernos')} />
 
         <ScrollView
           style={styles.list}

@@ -21,12 +21,12 @@ export default function CuadernosScreen() {
   const { notebooks, deleteNotebook } = useNotebooks();
   const [notebookToDelete, setNotebookToDelete] = useState(null);
 
-  function abrirCuaderno(notebook) {
-    router.push({
-      pathname: '/flashcards',
-      params: { id: notebook.id, title: notebook.name },
-    });
-  }
+function abrirCuaderno(notebook: Notebook) {
+  router.push({
+    pathname: '/detalle-cuaderno',
+    params: { id: notebook.id },
+  });
+}
 
   function confirmarEliminacion() {
     if (!notebookToDelete) return;
