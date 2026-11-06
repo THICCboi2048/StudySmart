@@ -1,9 +1,15 @@
 import { createContext, useContext, useState, ReactNode } from 'react';
 
+export type Card = {
+  id: string;
+  title: string;
+  content: string;
+};
+
 export type FlashcardSet = {
   id: string;
   name: string;
-  cards: string[];
+  cards: Card[];
 };
 
 export type Note = {
@@ -28,12 +34,15 @@ type NotebookContextValue = {
 
 const NotebookContext = createContext<NotebookContextValue | null>(null);
 
-// TODO: borrar cuando exista la pantalla para crear sets de flashcards.
 function crearSetDemo(): FlashcardSet {
+  const now = Date.now();
   return {
-    id: `${Date.now()}-demo`,
+    id: `${now}-demo`,
     name: 'Tipos de escenarios',
-    cards: ['Escenario en H', 'Escenario a la italiana', 'Escenario circular'],
+    cards: [
+      { id: `${now}-c0`, title: 'Escenario en H', content: 'El publico se encuentra al lateral izquierdo y derecho del escenario' },
+      { id: `${now}-c1`, title: 'Escenario circular', content: 'El público rodea el escenario por todos los lados.' },
+    ],
   };
 }
 
@@ -60,17 +69,26 @@ export function NotebookProvider({ children }: { children: ReactNode }) {
     return notebooks.find((n) => n.id === notebookId);
   }
 
-  function addFlashcardSet(notebookId: string, name: string, cards: string[] = []) {
+  function addFlashcardSet(
+    notebookId: string,
+    name: string,
+    cards: Omit<Card, 'id'>[] = [],
+  ) {
+    const now = Date.now();
     setNotebooks((current) =>
       current.map((n) =>
         n.id === notebookId
           ? {
-              ...n,
-              flashcardSets: [
-                ...n.flashcardSets,
-                { id: `${Date.now()}-${n.flashcardSets.length}`, name, cards },
-              ],
-            }
+            ...n,
+            flashcardSets: [
+              ...n.flashcardSets,
+              {
+                id: `${now}-${n.flashcardSets.length}`,
+                name,
+                cards: cards.map((c, i) => ({ id: `${now}-c${i}`, ...c })),
+              },
+            ],
+          }
           : n,
       ),
     );
