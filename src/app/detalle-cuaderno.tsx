@@ -15,13 +15,14 @@ import { useState } from 'react';
 // TODO: reemplazar por los datos reales (contexto / storage)
 
 
-import { useNotebooks, FlashcardSet } from '../context/NotebookContext';
+import { useNotebooks, FlashcardSet, Note } from '../context/NotebookContext';
 
 export default function DetalleCuadernoScreen() {
     const router = useRouter();
     const params = useLocalSearchParams();
     const { getNotebook } = useNotebooks();
     const [createModalVisible, setCreateModalVisible] = useState(false);
+    const [selectedNote, setSelectedNote] = useState<Note | null>(null);
 
     const id = Array.isArray(params.id) ? params.id[0] : params.id;
     const notebook = getNotebook(id);
@@ -40,6 +41,11 @@ export default function DetalleCuadernoScreen() {
     function crearFlashcards() {
         setCreateModalVisible(false);
         router.push({ pathname: '/crear-flashcard', params: { id } });
+    }
+
+    function crearNota() {
+        setCreateModalVisible(false);
+        router.push({ pathname: '/crear-nota', params: { id } });
     }
 
 
@@ -78,12 +84,12 @@ export default function DetalleCuadernoScreen() {
                     {/* NOTAS */}
                     <Text style={[styles.sectionTitle, styles.sectionSpacing]}>Notas</Text>
                     {notas.length === 0 ? (
-                        <Text style={styles.emptyState}>Próximamente</Text>
+                        <Text style={styles.emptyState}>No hay notas</Text>
                     ) : (
                         notas.map((nota) => (
                             <Pressable
                                 key={nota.id}
-                                onPress={() => { }}
+                                onPress={() => setSelectedNote(nota)}
                                 accessibilityRole="button"
                                 accessibilityLabel={`Abrir nota ${nota.name}`}
                                 style={({ pressed }) => [
@@ -122,17 +128,20 @@ export default function DetalleCuadernoScreen() {
                         </Text>
 
                         <Pressable
-                            disabled
+                            onPress={crearNota}
                             accessibilityRole="button"
-                            accessibilityLabel="Crear nota, próximamente"
-                            accessibilityState={{ disabled: true }}
-                            style={[styles.createOption, styles.createOptionDisabled]}
+                            accessibilityLabel="Crear nota"
+                            style={({ pressed }) => [
+                                styles.createOption,
+                                pressed && styles.createOptionPressed,
+                            ]}
                         >
-                            <Ionicons name="document-text-outline" size={23} color={colors.muted} />
+                            <Ionicons name="document-text-outline" size={23} color={colors.purple} />
                             <View style={styles.createOptionText}>
-                                <Text style={styles.createOptionTitleDisabled}>Crear nota</Text>
-                                <Text style={styles.createOptionSubtitle}>Próximamente</Text>
+                                <Text style={styles.createOptionTitle}>Crear nota</Text>
+                                <Text style={styles.createOptionSubtitle}>Añade una nota al cuaderno</Text>
                             </View>
+                            <Ionicons name="chevron-forward" size={20} color={colors.muted} />
                         </Pressable>
 
                         <Pressable
@@ -159,6 +168,38 @@ export default function DetalleCuadernoScreen() {
                             ]}
                         >
                             <Text style={styles.closeButtonText}>Cancelar</Text>
+                        </Pressable>
+                    </View>
+                </View>
+            </Modal>
+
+            <Modal
+                visible={selectedNote !== null}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setSelectedNote(null)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.noteCard}>
+                        <Text style={styles.createTitle}>{selectedNote?.name}</Text>
+                        <ScrollView
+                            style={styles.noteContentScroll}
+                            contentContainerStyle={styles.noteContentContainer}
+                        >
+                            <Text style={styles.noteContent}>
+                                {selectedNote?.content || 'Esta nota no tiene contenido.'}
+                            </Text>
+                        </ScrollView>
+                        <Pressable
+                            onPress={() => setSelectedNote(null)}
+                            accessibilityRole="button"
+                            accessibilityLabel="Cerrar nota"
+                            style={({ pressed }) => [
+                                styles.closeButton,
+                                pressed && styles.createOptionPressed,
+                            ]}
+                        >
+                            <Text style={styles.closeButtonText}>Cerrar</Text>
                         </Pressable>
                     </View>
                 </View>
@@ -280,10 +321,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 12,
     },
-    createOptionDisabled: {
-        backgroundColor: colors.background,
-        borderColor: colors.background,
-    },
     createOptionText: {
         flex: 1,
         gap: 2,
@@ -291,11 +328,6 @@ const styles = StyleSheet.create({
     createOptionTitle: {
         flex: 1,
         color: colors.dark,
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    createOptionTitleDisabled: {
-        color: colors.muted,
         fontSize: 16,
         fontWeight: '600',
     },
@@ -317,5 +349,25 @@ const styles = StyleSheet.create({
         color: colors.muted,
         fontSize: 15,
         fontWeight: '700',
+    },
+    noteCard: {
+        width: '100%',
+        maxWidth: 380,
+        maxHeight: '80%',
+        padding: 24,
+        backgroundColor: colors.white,
+        borderRadius: 22,
+        gap: 12,
+    },
+    noteContentScroll: {
+        flexShrink: 1,
+    },
+    noteContentContainer: {
+        paddingVertical: 4,
+    },
+    noteContent: {
+        color: colors.dark,
+        fontSize: 16,
+        lineHeight: 24,
     },
 });

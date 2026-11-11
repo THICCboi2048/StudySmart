@@ -15,6 +15,7 @@ export type FlashcardSet = {
 export type Note = {
   id: string;
   name: string;
+  content: string;
 };
 
 export type Notebook = {
@@ -30,6 +31,7 @@ type NotebookContextValue = {
   deleteNotebook: (notebookId: string) => void;
   getNotebook: (notebookId?: string) => Notebook | undefined;
   addFlashcardSet: (notebookId: string, name: string, cards?: string[]) => void;
+  addNote: (notebookId: string, name: string, content: string) => void;
 };
 
 const NotebookContext = createContext<NotebookContextValue | null>(null);
@@ -94,9 +96,29 @@ export function NotebookProvider({ children }: { children: ReactNode }) {
     );
   }
 
+  function addNote(notebookId: string, name: string, content: string) {
+    setNotebooks((current) =>
+      current.map((notebook) =>
+        notebook.id === notebookId
+          ? {
+            ...notebook,
+            notes: [
+              ...notebook.notes,
+              {
+                id: `${Date.now()}-${notebook.notes.length}`,
+                name,
+                content,
+              },
+            ],
+          }
+          : notebook,
+      ),
+    );
+  }
+
   return (
     <NotebookContext.Provider
-      value={{ notebooks, addNotebook, deleteNotebook, getNotebook, addFlashcardSet }}
+      value={{ notebooks, addNotebook, deleteNotebook, getNotebook, addFlashcardSet, addNote }}
     >
       {children}
     </NotebookContext.Provider>
