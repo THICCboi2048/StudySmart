@@ -5,10 +5,12 @@ import {
     SafeAreaView,
     Pressable,
     ScrollView,
+    Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { BottomBar, ScreenHeader, colors } from '../components/StudyUI';
+import { useState } from 'react';
 
 // TODO: reemplazar por los datos reales (contexto / storage)
 
@@ -19,6 +21,7 @@ export default function DetalleCuadernoScreen() {
     const router = useRouter();
     const params = useLocalSearchParams();
     const { getNotebook } = useNotebooks();
+    const [createModalVisible, setCreateModalVisible] = useState(false);
 
     const id = Array.isArray(params.id) ? params.id[0] : params.id;
     const notebook = getNotebook(id);
@@ -32,6 +35,11 @@ export default function DetalleCuadernoScreen() {
             pathname: '/flashcards',
             params: { id, flashcardId: flashcard.id },
         });
+    }
+
+    function crearFlashcards() {
+        setCreateModalVisible(false);
+        router.push({ pathname: '/crear-flashcard', params: { id } });
     }
 
 
@@ -94,13 +102,67 @@ export default function DetalleCuadernoScreen() {
                 <View style={styles.bottom}>
                     <BottomBar
                         active="notebooks"
-                        addLabel="Flashcard"
-                        onAdd={() =>
-                            router.push({ pathname: '/crear-flashcard', params: { id } })
-                        }
+                        addLabel="Crear"
+                        onAdd={() => setCreateModalVisible(true)}
                     />
                 </View>
             </View>
+
+            <Modal
+                visible={createModalVisible}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setCreateModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.createCard}>
+                        <Text style={styles.createTitle}>¿Qué deseas crear?</Text>
+                        <Text style={styles.createMessage}>
+                            Elige el tipo de contenido para este cuaderno.
+                        </Text>
+
+                        <Pressable
+                            disabled
+                            accessibilityRole="button"
+                            accessibilityLabel="Crear nota, próximamente"
+                            accessibilityState={{ disabled: true }}
+                            style={[styles.createOption, styles.createOptionDisabled]}
+                        >
+                            <Ionicons name="document-text-outline" size={23} color={colors.muted} />
+                            <View style={styles.createOptionText}>
+                                <Text style={styles.createOptionTitleDisabled}>Crear nota</Text>
+                                <Text style={styles.createOptionSubtitle}>Próximamente</Text>
+                            </View>
+                        </Pressable>
+
+                        <Pressable
+                            onPress={crearFlashcards}
+                            accessibilityRole="button"
+                            accessibilityLabel="Crear flashcards"
+                            style={({ pressed }) => [
+                                styles.createOption,
+                                pressed && styles.createOptionPressed,
+                            ]}
+                        >
+                            <Ionicons name="albums-outline" size={23} color={colors.purple} />
+                            <Text style={styles.createOptionTitle}>Crear flashcards</Text>
+                            <Ionicons name="chevron-forward" size={20} color={colors.muted} />
+                        </Pressable>
+
+                        <Pressable
+                            onPress={() => setCreateModalVisible(false)}
+                            accessibilityRole="button"
+                            accessibilityLabel="Cerrar"
+                            style={({ pressed }) => [
+                                styles.closeButton,
+                                pressed && styles.createOptionPressed,
+                            ]}
+                        >
+                            <Text style={styles.closeButtonText}>Cancelar</Text>
+                        </Pressable>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }
@@ -180,5 +242,80 @@ const styles = StyleSheet.create({
     bottom: {
         marginTop: 'auto',
         paddingBottom: 10,
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.45)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 24,
+    },
+    createCard: {
+        width: '100%',
+        maxWidth: 380,
+        padding: 24,
+        backgroundColor: colors.white,
+        borderRadius: 22,
+        gap: 12,
+    },
+    createTitle: {
+        color: colors.dark,
+        fontSize: 20,
+        fontWeight: '800',
+    },
+    createMessage: {
+        marginBottom: 4,
+        color: colors.muted,
+        fontSize: 15,
+        lineHeight: 22,
+    },
+    createOption: {
+        minHeight: 58,
+        paddingHorizontal: 14,
+        backgroundColor: colors.white,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: colors.lavender,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    createOptionDisabled: {
+        backgroundColor: colors.background,
+        borderColor: colors.background,
+    },
+    createOptionText: {
+        flex: 1,
+        gap: 2,
+    },
+    createOptionTitle: {
+        flex: 1,
+        color: colors.dark,
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    createOptionTitleDisabled: {
+        color: colors.muted,
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    createOptionSubtitle: {
+        color: colors.muted,
+        fontSize: 13,
+    },
+    createOptionPressed: {
+        opacity: 0.7,
+    },
+    closeButton: {
+        minHeight: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 2,
+        borderRadius: 12,
+    },
+    closeButtonText: {
+        color: colors.muted,
+        fontSize: 15,
+        fontWeight: '700',
     },
 });
