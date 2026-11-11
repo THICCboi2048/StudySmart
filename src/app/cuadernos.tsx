@@ -28,6 +28,7 @@ export default function CuadernosScreen() {
   const router = useRouter();
   const { notebooks, deleteNotebook } = useNotebooks();
   const [notebookToDelete, setNotebookToDelete] = useState(null);
+  const [mostrarOpcionesEliminacion, setMostrarOpcionesEliminacion] = useState(false);
 
   function abrirCuaderno(notebook: Notebook) {
     router.push({
@@ -50,8 +51,12 @@ export default function CuadernosScreen() {
           <Text style={styles.title}>Cuadernos</Text>
 
           <Pressable
-            onPress={() => { }}
-            accessibilityLabel="Configuración"
+            onPress={() => setMostrarOpcionesEliminacion((visible) => !visible)}
+            accessibilityLabel={
+              mostrarOpcionesEliminacion
+                ? 'Ocultar opciones de eliminación'
+                : 'Mostrar opciones de eliminación'
+            }
             accessibilityRole="button"
             style={styles.settings}
           >
@@ -85,18 +90,20 @@ export default function CuadernosScreen() {
                 <Text style={styles.notebookName}>{notebook.name}</Text>
               </Pressable>
 
-              <Pressable
-                onPress={() => setNotebookToDelete(notebook)}
-                accessibilityRole="button"
-                accessibilityLabel={`Eliminar cuaderno ${notebook.name}`}
-                hitSlop={8}
-                style={({ pressed }) => [
-                  styles.deleteButton,
-                  pressed && styles.deleteButtonPressed,
-                ]}
-              >
-                <Ionicons name="trash-outline" size={21} color={colors.muted} />
-              </Pressable>
+              {mostrarOpcionesEliminacion && (
+                <Pressable
+                  onPress={() => setNotebookToDelete(notebook)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Eliminar cuaderno ${notebook.name}`}
+                  hitSlop={8}
+                  style={({ pressed }) => [
+                    styles.deleteButton,
+                    pressed && styles.deleteButtonPressed,
+                  ]}
+                >
+                  <Ionicons name="trash-outline" size={21} color={colors.muted} />
+                </Pressable>
+              )}
             </View>
           )))}
         </ScrollView>
