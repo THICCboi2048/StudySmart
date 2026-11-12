@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { BottomBar, colors } from '../components/StudyUI';
+import { BottomBar, ScreenHeader, colors } from '../components/StudyUI';
 import { useNotebooks } from '../context/NotebookContext';
 
 export default function CreacionScreen() {
@@ -27,7 +27,7 @@ export default function CreacionScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
-        <Text style={styles.title}>Creación</Text>
+        <ScreenHeader title="Creación" onBack={() => router.back()} />
 
         <View style={styles.form}>
           <Text style={styles.label}>Nombre del cuaderno</Text>
@@ -73,11 +73,6 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 24,
     paddingTop: 24,
-  },
-  title: {
-    fontSize: 29,
-    fontWeight: '800',
-    color: colors.dark,
   },
   form: {
     marginTop: 32,
