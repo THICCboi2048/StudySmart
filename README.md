@@ -2,6 +2,18 @@
 
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
+## Firebase Authentication
+
+The Perfil section includes email/password sign-in, registration, and sign-out. To connect it:
+
+1. Register a Web app in the `base-de-smartstudy` Firebase project.
+2. Enable **Email/Password** in Firebase Console under Authentication > Sign-in method.
+3. Copy `.env.example` to `.env.local` and fill in the Web app's Firebase config values.
+4. Restart Expo after changing environment variables.
+
+The client config values are public Firebase identifiers; keep server credentials and service
+account keys out of the app.
+
 ## Get started
 
 1. Install dependencies

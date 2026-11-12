@@ -5,26 +5,22 @@ import {
   StyleSheet,
   SafeAreaView,
   Pressable,
+  ActivityIndicator,
 } from 'react-native';
 
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 
 import {
   BottomBar,
   StudyButton,
   colors,
 } from '../components/StudyUI';
-
-const materias: string[] = [
-  'Teatro',
-  'Matemáticas',
-  'Estudios filosofales',
-  'Cocina',
-];
+import { DEFAULT_NOTEBOOKS, getNotebooks } from '../services/notebooks';
 
 const iconos: React.ComponentProps<typeof Ionicons>['name'][] = [
-  'theater',
+  'color-palette-outline',
   'calculator-outline',
   'book-outline',
   'restaurant-outline',
@@ -32,6 +28,34 @@ const iconos: React.ComponentProps<typeof Ionicons>['name'][] = [
 
 export default function CuadernosScreen() {
   const router = useRouter();
+  const [materias, setMaterias] = useState<string[]>(DEFAULT_NOTEBOOKS);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  useEffect(() => {
+    let isActive = true;
+
+    getNotebooks()
+      .then((notebooks) => {
+        if (isActive) {
+          setMaterias(notebooks);
+        }
+      })
+      .catch(() => {
+        if (isActive) {
+          setErrorMessage('No se pudieron cargar los cuadernos. Inténtalo de nuevo.');
+        }
+      })
+      .finally(() => {
+        if (isActive) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -58,11 +82,21 @@ export default function CuadernosScreen() {
         </Text>
 
         <View style={styles.list}>
-          {materias.map((materia, index) => (
+          {isLoading ? (
+            <ActivityIndicator
+              size="large"
+              color={colors.purple}
+              accessibilityLabel="Cargando cuadernos"
+            />
+          ) : errorMessage ? (
+            <Text accessibilityRole="alert" style={styles.error}>
+              {errorMessage}
+            </Text>
+          ) : materias.map((materia, index) => (
             <StudyButton
               key={materia}
               title={materia}
-              icon={iconos[index]}
+              icon={iconos[index % iconos.length]}
               onPress={() =>
                 router.push({
                   pathname: '/materia',
@@ -117,6 +151,11 @@ const styles = StyleSheet.create({
   },
   list: {
     marginTop: 4,
+  },
+  error: {
+    color: '#B3261E',
+    fontSize: 14,
+    lineHeight: 20,
   },
   bottom: {
     marginTop: 'auto',
