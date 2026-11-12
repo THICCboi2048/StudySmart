@@ -19,7 +19,7 @@ que habíamos hecho y que no sabíamos)
 # CONSTANTS
 
 theme.ts -> creo que también no es utilizado por nada y es seguro de borrar
-
+textLimits -> es limite de lso textos qu se pueden poner 
 # CONTEXT
 
 NotebookContext.tsx -> creo que gestiona algo del funcionamiento y/o almacenamiento de las flashcards y cuadernos. Aquí es donde está la flashcard del teatro, así que como minimo no lo borren
