@@ -262,10 +262,7 @@ export default function DetalleCuadernoScreen() {
                             ]}
                         >
                             <Ionicons name="document-text-outline" size={23} color={colors.purple} />
-                            <View style={styles.createOptionText}>
-                                <Text style={styles.createOptionTitle}>Crear nota</Text>
-                                <Text style={styles.createOptionSubtitle}>Añade una nota al cuaderno</Text>
-                            </View>
+                            <Text style={styles.createOptionTitle}>Crear nota</Text>
                             <Ionicons name="chevron-forward" size={20} color={colors.muted} />
                         </Pressable>
 
@@ -517,19 +514,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 12,
     },
-    createOptionText: {
-        flex: 1,
-        gap: 2,
-    },
     createOptionTitle: {
         flex: 1,
         color: colors.dark,
         fontSize: 16,
         fontWeight: '600',
-    },
-    createOptionSubtitle: {
-        color: colors.muted,
-        fontSize: 13,
     },
     createOptionPressed: {
         opacity: 0.7,

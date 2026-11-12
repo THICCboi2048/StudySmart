@@ -51,18 +51,6 @@ type NotebookContextValue = {
 
 const NotebookContext = createContext<NotebookContextValue | null>(null);
 
-function crearSetDemo(): FlashcardSet {
-  const now = Date.now();
-  return {
-    id: `${now}-demo`,
-    name: 'Tipos de escenarios',
-    cards: [
-      { id: `${now}-c0`, title: 'Escenario en H', content: 'El publico se encuentra al lateral izquierdo y derecho del escenario' },
-      { id: `${now}-c1`, title: 'Escenario circular', content: 'El público rodea el escenario por todos los lados.' },
-    ],
-  };
-}
-
 export function NotebookProvider({ children }: { children: ReactNode }) {
   const [notebooks, setNotebooks] = useState<Notebook[]>([]);
 
@@ -72,7 +60,7 @@ export function NotebookProvider({ children }: { children: ReactNode }) {
       {
         id: `${Date.now()}-${current.length}`,
         name,
-        flashcardSets: [crearSetDemo()],
+        flashcardSets: [],
         notes: [],
       },
     ]);
