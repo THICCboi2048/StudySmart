@@ -1,0 +1,3 @@
+export const MAX_TITLE_LENGTH = 25;
+export const MAX_FLASHCARD_CONTENT_LENGTH = 200;
+export const MAX_NOTE_CONTENT_LENGTH = 300;

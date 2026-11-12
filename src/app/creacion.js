@@ -10,6 +10,7 @@ import {
 import { useRouter } from 'expo-router';
 import { BottomBar, ScreenHeader, colors } from '../components/StudyUI';
 import { useNotebooks } from '../context/NotebookContext';
+import { MAX_TITLE_LENGTH } from '../constants/textLimits';
 
 export default function CreacionScreen() {
   const [nombreCuaderno, setNombreCuaderno] = useState('');
@@ -34,6 +35,7 @@ export default function CreacionScreen() {
           <TextInput
             value={nombreCuaderno}
             onChangeText={setNombreCuaderno}
+            maxLength={MAX_TITLE_LENGTH}
             placeholder="Escribe el nombre"
             placeholderTextColor={colors.muted}
             autoCapitalize="words"
