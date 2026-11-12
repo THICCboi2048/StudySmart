@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     SafeAreaView,
     StyleSheet,
@@ -11,9 +11,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { BottomBar, ScreenHeader, colors } from '../components/StudyUI';
-import { useNotebooks } from '../context/NotebookContext';
+import { FlashcardInput, useNotebooks } from '../context/NotebookContext';
 
-type Borrador = { key: string; title: string; content: string };
+type Borrador = { key: string; cardId?: string; title: string; content: string };
 
 let contador = 0;
 const nuevoBorrador = (): Borrador => ({
@@ -25,15 +25,37 @@ const nuevoBorrador = (): Borrador => ({
 export default function CrearFlashcardScreen() {
     const router = useRouter();
     const params = useLocalSearchParams();
-    const { getNotebook, addFlashcardSet } = useNotebooks();
+    const { getNotebook, addFlashcardSet, updateFlashcardSet } = useNotebooks();
 
     const notebookId = Array.isArray(params.id) ? params.id[0] : params.id;
+    const flashcardId = Array.isArray(params.flashcardId)
+        ? params.flashcardId[0]
+        : params.flashcardId;
     const notebook = getNotebook(notebookId);
+    const flashcardSet = notebook?.flashcardSets.find((item) => item.id === flashcardId);
 
-    const [nombre, setNombre] = useState('');
+    const [nombre, setNombre] = useState(flashcardSet?.name ?? '');
     const [borradores, setBorradores] = useState<Borrador[]>([nuevoBorrador()]);
+    const isEditing = !!flashcardId;
 
-    const puedeCrear = nombre.trim().length > 0 && !!notebookId;
+    const puedeCrear =
+        nombre.trim().length > 0 &&
+        !!notebook &&
+        (!isEditing || !!flashcardSet);
+
+    useEffect(() => {
+        setNombre(flashcardSet?.name ?? '');
+        setBorradores(
+            flashcardSet && flashcardSet.cards.length > 0
+                ? flashcardSet.cards.map((card) => ({
+                    key: card.id,
+                    cardId: card.id,
+                    title: card.title,
+                    content: card.content,
+                }))
+                : [nuevoBorrador()],
+        );
+    }, [flashcardId, flashcardSet?.name, flashcardSet?.cards]);
 
     function actualizar(key: string, campo: 'title' | 'content', valor: string) {
         setBorradores((actual) =>
@@ -51,16 +73,27 @@ export default function CrearFlashcardScreen() {
         );
     }
 
-    function crearFlashcard() {
+    function guardarFlashcard() {
         if (!puedeCrear || !notebookId) return;
 
-        const cards = borradores
-            .map((b) => ({ title: b.title.trim(), content: b.content.trim() }))
+        const cards: FlashcardInput[] = borradores
+            .map((b) => ({
+                ...(b.cardId ? { id: b.cardId } : {}),
+                title: b.title.trim(),
+                content: b.content.trim(),
+            }))
             .filter((c) => c.title || c.content);
 
-        addFlashcardSet(notebookId, nombre.trim(), cards);
+        if (flashcardId) {
+            updateFlashcardSet(notebookId, flashcardId, nombre.trim(), cards);
+        } else {
+            addFlashcardSet(
+                notebookId,
+                nombre.trim(),
+                cards.map(({ title, content }) => ({ title, content })),
+            );
+        }
 
-        // Vuelve siempre al menú del cuaderno, sin importar desde dónde se abrió
         router.dismissTo({ pathname: '/detalle-cuaderno', params: { id: notebookId } });
     }
 
@@ -69,7 +102,7 @@ export default function CrearFlashcardScreen() {
             <View style={styles.container}>
 
                 <ScreenHeader
-                    title="Nueva flashcard"
+                    title={isEditing ? 'Editar flashcard' : 'Nueva flashcard'}
                     subtitle={notebook ? `en ${notebook.name}` : undefined}
                     onBack={() => router.back()}
                 />
@@ -79,6 +112,13 @@ export default function CrearFlashcardScreen() {
                     contentContainerStyle={styles.scrollContent}
                     keyboardShouldPersistTaps="handled"
                 >
+                    {(!notebook || (isEditing && !flashcardSet)) && (
+                        <Text style={styles.errorMessage}>
+                            {notebook
+                                ? 'No se encontró la flashcard. Vuelve al cuaderno e inténtalo de nuevo.'
+                                : 'No se encontró el cuaderno. Vuelve a la lista e inténtalo de nuevo.'}
+                        </Text>
+                    )}
                     <Text style={styles.label}>Nombre del set</Text>
                     <TextInput
                         value={nombre}
@@ -137,17 +177,21 @@ export default function CrearFlashcardScreen() {
                     </Pressable>
 
                     <Pressable
-                        onPress={crearFlashcard}
+                        onPress={guardarFlashcard}
                         disabled={!puedeCrear}
                         accessibilityRole="button"
-                        accessibilityLabel="Crear flashcard"
+                        accessibilityLabel={
+                            isEditing ? 'Guardar cambios de la flashcard' : 'Crear flashcard'
+                        }
                         style={({ pressed }) => [
                             styles.createButton,
                             !puedeCrear && styles.createButtonDisabled,
                             pressed && styles.pressed,
                         ]}
                     >
-                        <Text style={styles.createButtonText}>Crear flashcard</Text>
+                        <Text style={styles.createButtonText}>
+                            {isEditing ? 'Guardar cambios' : 'Crear flashcard'}
+                        </Text>
                     </Pressable>
                 </ScrollView>
 
@@ -166,6 +210,12 @@ const styles = StyleSheet.create({
     subtitle: { marginTop: 4, fontSize: 15, color: colors.muted },
     scroll: { flex: 1, marginTop: 20 },
     scrollContent: { paddingBottom: 16 },
+    errorMessage: {
+        marginBottom: 18,
+        color: colors.muted,
+        fontSize: 15,
+        lineHeight: 22,
+    },
     label: {
         marginBottom: 10,
         color: colors.dark,

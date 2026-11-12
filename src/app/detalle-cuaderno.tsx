@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { BottomBar, ScreenHeader, colors } from '../components/StudyUI';
+import { BottomBar, colors } from '../components/StudyUI';
 import { useState } from 'react';
 
 // TODO: reemplazar por los datos reales (contexto / storage)
@@ -20,9 +20,15 @@ import { useNotebooks, FlashcardSet, Note } from '../context/NotebookContext';
 export default function DetalleCuadernoScreen() {
     const router = useRouter();
     const params = useLocalSearchParams();
-    const { getNotebook } = useNotebooks();
+    const { getNotebook, deleteFlashcardSet, deleteNote } = useNotebooks();
     const [createModalVisible, setCreateModalVisible] = useState(false);
     const [selectedNote, setSelectedNote] = useState<Note | null>(null);
+    const [showDeleteOptions, setShowDeleteOptions] = useState(false);
+    const [itemToDelete, setItemToDelete] = useState<{
+        type: 'flashcard' | 'note';
+        id: string;
+        name: string;
+    } | null>(null);
 
     const id = Array.isArray(params.id) ? params.id[0] : params.id;
     const notebook = getNotebook(id);
@@ -38,6 +44,28 @@ export default function DetalleCuadernoScreen() {
         });
     }
 
+    function editarFlashcard(flashcard: FlashcardSet) {
+        router.push({
+            pathname: '/crear-flashcard',
+            params: { id, flashcardId: flashcard.id },
+        });
+    }
+
+    function abrirNota(nota: Note) {
+        if (showDeleteOptions) {
+            editarNota(nota.id);
+        } else {
+            setSelectedNote(nota);
+        }
+    }
+
+    function editarNota(noteId: string) {
+        router.push({
+            pathname: '/crear-nota',
+            params: { id, noteId },
+        });
+    }
+
     function crearFlashcards() {
         setCreateModalVisible(false);
         router.push({ pathname: '/crear-flashcard', params: { id } });
@@ -48,11 +76,52 @@ export default function DetalleCuadernoScreen() {
         router.push({ pathname: '/crear-nota', params: { id } });
     }
 
+    function confirmarEliminacion() {
+        if (!id || !itemToDelete) return;
+
+        if (itemToDelete.type === 'flashcard') {
+            deleteFlashcardSet(id, itemToDelete.id);
+        } else {
+            deleteNote(id, itemToDelete.id);
+        }
+
+        setItemToDelete(null);
+    }
+
 
     return (
         <SafeAreaView style={styles.safe}>
             <View style={styles.container}>
-                <ScreenHeader title={title} onBack={() => router.navigate('/cuadernos')} />
+                <View style={styles.header}>
+                    <Pressable
+                        onPress={() => router.navigate('/cuadernos')}
+                        accessibilityRole="button"
+                        accessibilityLabel="Volver"
+                        style={styles.backButton}
+                    >
+                        <Ionicons name="arrow-back" size={24} color={colors.dark} />
+                    </Pressable>
+                    <Text style={styles.title} numberOfLines={1}>{title}</Text>
+                    <Pressable
+                        onPress={() => setShowDeleteOptions((visible) => !visible)}
+                        accessibilityRole="button"
+                        accessibilityLabel={
+                            showDeleteOptions
+                                ? 'Ocultar opciones de eliminación'
+                                : 'Mostrar opciones de eliminación'
+                        }
+                        style={[
+                            styles.settings,
+                            showDeleteOptions && styles.settingsActive,
+                        ]}
+                    >
+                        <Ionicons
+                            name="settings-outline"
+                            size={25}
+                            color={showDeleteOptions ? colors.dark : colors.muted}
+                        />
+                    </Pressable>
+                </View>
 
                 <ScrollView
                     style={styles.list}
@@ -64,20 +133,50 @@ export default function DetalleCuadernoScreen() {
                         <Text style={styles.emptyState}>No hay flashcards</Text>
                     ) : (
                         flashcards.map((flashcard) => (
-                            <Pressable
-                                key={flashcard.id}
-                                onPress={() => abrirFlashcard(flashcard)}
-                                accessibilityRole="button"
-                                accessibilityLabel={`Abrir flashcard ${flashcard.name}`}
-                                style={({ pressed }) => [
-                                    styles.card,
-                                    pressed && styles.cardPressed,
-                                ]}
-                            >
-                                <Ionicons name="albums-outline" size={23} color={colors.purple} />
-                                <Text style={styles.cardName}>{flashcard.name}</Text>
-                                <Ionicons name="chevron-forward" size={20} color={colors.muted} />
-                            </Pressable>
+                            <View key={flashcard.id} style={styles.itemRow}>
+                                <Pressable
+                                    onPress={() =>
+                                        showDeleteOptions
+                                            ? editarFlashcard(flashcard)
+                                            : abrirFlashcard(flashcard)
+                                    }
+                                    accessibilityRole="button"
+                                    accessibilityLabel={
+                                        showDeleteOptions
+                                            ? `Editar flashcard ${flashcard.name}`
+                                            : `Abrir flashcard ${flashcard.name}`
+                                    }
+                                    style={({ pressed }) => [
+                                        styles.card,
+                                        styles.itemCard,
+                                        pressed && styles.cardPressed,
+                                    ]}
+                                >
+                                    <Ionicons name="albums-outline" size={23} color={colors.purple} />
+                                    <Text style={styles.cardName}>{flashcard.name}</Text>
+                                    {!showDeleteOptions && (
+                                        <Ionicons name="chevron-forward" size={20} color={colors.muted} />
+                                    )}
+                                </Pressable>
+                                {showDeleteOptions && (
+                                    <Pressable
+                                        onPress={() => setItemToDelete({
+                                            type: 'flashcard',
+                                            id: flashcard.id,
+                                            name: flashcard.name,
+                                        })}
+                                        accessibilityRole="button"
+                                        accessibilityLabel={`Eliminar flashcard ${flashcard.name}`}
+                                        hitSlop={8}
+                                        style={({ pressed }) => [
+                                            styles.deleteButton,
+                                            pressed && styles.deleteButtonPressed,
+                                        ]}
+                                    >
+                                        <Ionicons name="trash-outline" size={21} color={colors.muted} />
+                                    </Pressable>
+                                )}
+                            </View>
                         ))
                     )}
 
@@ -87,20 +186,46 @@ export default function DetalleCuadernoScreen() {
                         <Text style={styles.emptyState}>No hay notas</Text>
                     ) : (
                         notas.map((nota) => (
-                            <Pressable
-                                key={nota.id}
-                                onPress={() => setSelectedNote(nota)}
-                                accessibilityRole="button"
-                                accessibilityLabel={`Abrir nota ${nota.name}`}
-                                style={({ pressed }) => [
-                                    styles.card,
-                                    pressed && styles.cardPressed,
-                                ]}
-                            >
-                                <Ionicons name="document-text-outline" size={23} color={colors.purple} />
-                                <Text style={styles.cardName}>{nota.name}</Text>
-                                <Ionicons name="chevron-forward" size={20} color={colors.muted} />
-                            </Pressable>
+                            <View key={nota.id} style={styles.itemRow}>
+                                <Pressable
+                                    onPress={() => abrirNota(nota)}
+                                    accessibilityRole="button"
+                                    accessibilityLabel={
+                                        showDeleteOptions
+                                            ? `Editar nota ${nota.name}`
+                                            : `Abrir nota ${nota.name}`
+                                    }
+                                    style={({ pressed }) => [
+                                        styles.card,
+                                        styles.itemCard,
+                                        pressed && styles.cardPressed,
+                                    ]}
+                                >
+                                    <Ionicons name="document-text-outline" size={23} color={colors.purple} />
+                                    <Text style={styles.cardName}>{nota.name}</Text>
+                                    {!showDeleteOptions && (
+                                        <Ionicons name="chevron-forward" size={20} color={colors.muted} />
+                                    )}
+                                </Pressable>
+                                {showDeleteOptions && (
+                                    <Pressable
+                                        onPress={() => setItemToDelete({
+                                            type: 'note',
+                                            id: nota.id,
+                                            name: nota.name,
+                                        })}
+                                        accessibilityRole="button"
+                                        accessibilityLabel={`Eliminar nota ${nota.name}`}
+                                        hitSlop={8}
+                                        style={({ pressed }) => [
+                                            styles.deleteButton,
+                                            pressed && styles.deleteButtonPressed,
+                                        ]}
+                                    >
+                                        <Ionicons name="trash-outline" size={21} color={colors.muted} />
+                                    </Pressable>
+                                )}
+                            </View>
                         ))
                     )}
                 </ScrollView>
@@ -204,6 +329,48 @@ export default function DetalleCuadernoScreen() {
                     </View>
                 </View>
             </Modal>
+
+            <Modal
+                visible={itemToDelete !== null}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setItemToDelete(null)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.confirmationCard}>
+                        <Text style={styles.createTitle}>
+                            Eliminar {itemToDelete?.type === 'flashcard' ? 'flashcard' : 'nota'}
+                        </Text>
+                        <Text style={styles.createMessage}>
+                            ¿Quieres eliminar "{itemToDelete?.name}"?
+                        </Text>
+                        <View style={styles.confirmationActions}>
+                            <Pressable
+                                onPress={() => setItemToDelete(null)}
+                                accessibilityRole="button"
+                                accessibilityLabel="Cancelar eliminación"
+                                style={({ pressed }) => [
+                                    styles.cancelButton,
+                                    pressed && styles.createOptionPressed,
+                                ]}
+                            >
+                                <Text style={styles.closeButtonText}>Cancelar</Text>
+                            </Pressable>
+                            <Pressable
+                                onPress={confirmarEliminacion}
+                                accessibilityRole="button"
+                                accessibilityLabel="Confirmar eliminación"
+                                style={({ pressed }) => [
+                                    styles.confirmButton,
+                                    pressed && styles.createOptionPressed,
+                                ]}
+                            >
+                                <Text style={styles.confirmButtonText}>Eliminar</Text>
+                            </Pressable>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }
@@ -230,6 +397,17 @@ const styles = StyleSheet.create({
         borderRadius: 15,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    settings: {
+        width: 46,
+        height: 46,
+        backgroundColor: colors.white,
+        borderRadius: 15,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    settingsActive: {
+        backgroundColor: colors.lavender,
     },
     title: {
         flex: 1,
@@ -273,6 +451,24 @@ const styles = StyleSheet.create({
     },
     cardPressed: {
         opacity: 0.7,
+    },
+    itemRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    itemCard: {
+        flex: 1,
+    },
+    deleteButton: {
+        width: 40,
+        height: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 12,
+    },
+    deleteButtonPressed: {
+        backgroundColor: colors.lavender,
     },
     cardName: {
         flex: 1,
@@ -350,6 +546,14 @@ const styles = StyleSheet.create({
         fontSize: 15,
         fontWeight: '700',
     },
+    confirmationCard: {
+        width: '100%',
+        maxWidth: 380,
+        padding: 24,
+        backgroundColor: colors.white,
+        borderRadius: 22,
+        gap: 12,
+    },
     noteCard: {
         width: '100%',
         maxWidth: 380,
@@ -369,5 +573,31 @@ const styles = StyleSheet.create({
         color: colors.dark,
         fontSize: 16,
         lineHeight: 24,
+    },
+    confirmationActions: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        gap: 10,
+        marginTop: 12,
+    },
+    cancelButton: {
+        minHeight: 44,
+        paddingHorizontal: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 12,
+    },
+    confirmButton: {
+        minHeight: 44,
+        paddingHorizontal: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: colors.purple,
+        borderRadius: 12,
+    },
+    confirmButtonText: {
+        color: colors.white,
+        fontSize: 15,
+        fontWeight: '700',
     },
 });

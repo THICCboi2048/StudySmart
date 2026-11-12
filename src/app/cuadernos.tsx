@@ -58,12 +58,15 @@ export default function CuadernosScreen() {
                 : 'Mostrar opciones de eliminación'
             }
             accessibilityRole="button"
-            style={styles.settings}
+            style={[
+              styles.settings,
+              mostrarOpcionesEliminacion && styles.settingsActive,
+            ]}
           >
             <Ionicons
               name="settings-outline"
               size={25}
-              color={colors.dark}
+              color={mostrarOpcionesEliminacion ? colors.dark : colors.muted}
             />
           </Pressable>
         </View>
@@ -183,6 +186,9 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  settingsActive: {
+    backgroundColor: colors.lavender,
   },
   emptyState: {
     marginTop: 14,
