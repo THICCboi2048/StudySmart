@@ -1,9 +1,11 @@
-import { View, Text, StyleSheet, SafeAreaView, Pressable } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, Pressable, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { BottomBar, ScreenHeader, colors } from '../components/StudyUI';
 import { useNotebooks } from '../context/NotebookContext';
+
+const webTextWrapStyle = { flexShrink: 1, wordBreak: 'break-word' as const };
 
 export default function FlashcardsScreen() {
   const router = useRouter();
@@ -86,7 +88,15 @@ export default function FlashcardsScreen() {
         <View style={styles.card}>
           <Ionicons name="albums-outline" size={38} color={colors.purple} />
           <Text style={styles.side}>{verContenido ? 'Contenido' : 'Título'}</Text>
-          <Text style={styles.cardTitle}>{textoVisible || '—'}</Text>
+          <Text
+            style={[
+              styles.cardTitle,
+              verContenido && styles.cardContent,
+              Platform.OS === 'web' && webTextWrapStyle,
+            ]}
+          >
+            {textoVisible || '—'}
+          </Text>
         </View>
 
         <Pressable
@@ -153,11 +163,18 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   cardTitle: {
+    width: '100%',
+    flexShrink: 1,
     marginTop: 10,
     fontSize: 22,
     fontWeight: '700',
     color: colors.dark,
     textAlign: 'center',
+  },
+  cardContent: {
+    fontSize: 18,
+    lineHeight: 26,
+    fontWeight: '500',
   },
   flipButton: {
     minHeight: 50,

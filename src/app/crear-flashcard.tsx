@@ -12,6 +12,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { BottomBar, ScreenHeader, colors } from '../components/StudyUI';
 import { FlashcardInput, useNotebooks } from '../context/NotebookContext';
+import {
+    MAX_FLASHCARD_CONTENT_LENGTH,
+    MAX_TITLE_LENGTH,
+} from '../constants/textLimits';
 
 type Borrador = { key: string; cardId?: string; title: string; content: string };
 
@@ -123,6 +127,7 @@ export default function CrearFlashcardScreen() {
                     <TextInput
                         value={nombre}
                         onChangeText={setNombre}
+                        maxLength={MAX_TITLE_LENGTH}
                         placeholder="Ej. Tipos de escenarios"
                         placeholderTextColor={colors.muted}
                         style={styles.input}
@@ -149,6 +154,7 @@ export default function CrearFlashcardScreen() {
                             <TextInput
                                 value={b.title}
                                 onChangeText={(t) => actualizar(b.key, 'title', t)}
+                                maxLength={MAX_TITLE_LENGTH}
                                 placeholder="Título"
                                 placeholderTextColor={colors.muted}
                                 style={styles.input}
@@ -157,6 +163,7 @@ export default function CrearFlashcardScreen() {
                             <TextInput
                                 value={b.content}
                                 onChangeText={(t) => actualizar(b.key, 'content', t)}
+                                maxLength={MAX_FLASHCARD_CONTENT_LENGTH}
                                 placeholder="Contenido"
                                 placeholderTextColor={colors.muted}
                                 multiline

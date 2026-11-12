@@ -11,6 +11,10 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { BottomBar, ScreenHeader, colors } from '../components/StudyUI';
 import { useNotebooks } from '../context/NotebookContext';
+import {
+    MAX_NOTE_CONTENT_LENGTH,
+    MAX_TITLE_LENGTH,
+} from '../constants/textLimits';
 
 export default function CrearNotaScreen() {
     const router = useRouter();
@@ -72,6 +76,7 @@ export default function CrearNotaScreen() {
                     <TextInput
                         value={titulo}
                         onChangeText={setTitulo}
+                        maxLength={MAX_TITLE_LENGTH}
                         placeholder="Ej. Resumen del tema"
                         placeholderTextColor={colors.muted}
                         style={styles.input}
@@ -83,6 +88,7 @@ export default function CrearNotaScreen() {
                     <TextInput
                         value={contenido}
                         onChangeText={setContenido}
+                        maxLength={MAX_NOTE_CONTENT_LENGTH}
                         placeholder="Escribe aquí tu nota"
                         placeholderTextColor={colors.muted}
                         multiline
