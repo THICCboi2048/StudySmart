@@ -15,10 +15,14 @@ import {
   Text,
   TextInput,
   View,
+  Alert, 
+  Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-
+import * as ImagePicker from 'expo-image-picker';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
+import { doc, getDoc, getFirestore, setDoc } from 'firebase/firestore';
 import { colors, HapticPressable } from '../components/StudyUI';
 import { getFirebaseAuth } from '../services/firebaseAuth';
 import { isFirebaseConfigured } from '../services/firebase';
@@ -78,6 +82,31 @@ export default function AuthScreen() {
   const [errorMessage, setErrorMessage] = useState('');
   const user = session.user;
   const isLoading = session.status === 'loading';
+  const [photoURL, setPhotoURL] = useState<string | null>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+
+  useEffect(() => {
+    if (!user) {
+      setPhotoURL(null);
+      return;
+    }
+
+    let active = true;
+
+    getDoc(doc(getFirestore(), 'users', user.uid))
+      .then((snap) => {
+        if (active) {
+          setPhotoURL(snap.data()?.photoBase64 ?? null);
+        }
+      })
+      .catch((error) => {
+        console.error('Error al cargar foto:', error?.code, error?.message);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [user?.uid]);
 
   useEffect(() => {
     if (session.status !== 'signedIn') {
@@ -146,6 +175,88 @@ export default function AuthScreen() {
       setIsSubmitting(false);
     }
   }
+
+  //STORAGEEE
+  function chooseAvatarSource(): void {
+  Alert.alert('Foto de perfil', 'Elige una opción', [
+    { text: 'Tomar foto', onPress: () => pickAvatar('camera') },
+    { text: 'Elegir de la galería', onPress: () => pickAvatar('library') },
+    { text: 'Cancelar', style: 'cancel' },
+  ]);
+}
+
+async function pickAvatar(source: 'camera' | 'library'): Promise<void> {
+  setErrorMessage('');
+
+  try {
+    if (source === 'camera') {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permission.granted) {
+        setErrorMessage('Activa el permiso de cámara en los ajustes del teléfono.');
+        return;
+      }
+    }
+
+    const options: ImagePicker.ImagePickerOptions = {
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+    };
+
+    const result =
+      source === 'camera'
+        ? await ImagePicker.launchCameraAsync(options)
+        : await ImagePicker.launchImageLibraryAsync(options);
+
+    if (result.canceled) {
+      return;
+    }
+
+    await uploadAvatar(result.assets[0].uri);
+  } catch (error) {
+    console.error('Error al elegir foto:', error);
+    setErrorMessage('No se pudo abrir la cámara o la galería.');
+  }
+}
+
+async function uploadAvatar(uri: string): Promise<void> {
+  const currentUser = getFirebaseAuth().currentUser;
+  if (!currentUser) {
+    return;
+  }
+
+  setIsUploadingPhoto(true);
+
+  try {
+    // Reducir a 256x256 y comprimir para que quepa en Firestore
+    const resized = await manipulateAsync(
+      uri,
+      [{ resize: { width: 256, height: 256 } }],
+      { compress: 0.5, format: SaveFormat.JPEG, base64: true }
+    );
+
+    if (!resized.base64) {
+      throw new Error('No se pudo procesar la imagen.');
+    }
+
+    const dataUrl = `data:image/jpeg;base64,${resized.base64}`;
+
+    await setDoc(
+      doc(getFirestore(), 'users', currentUser.uid),
+      { photoBase64: dataUrl },
+      { merge: true }
+    );
+
+    setPhotoURL(dataUrl);
+  } catch (error) {
+    console.error('Error al guardar foto:', error);
+    setErrorMessage('No se pudo guardar la foto. Inténtalo de nuevo.');
+  } finally {
+    setIsUploadingPhoto(false);
+  }
+}
+/////////
 
   function changeMode(nextMode: AuthMode): void {
     setMode(nextMode);
@@ -536,4 +647,28 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 6,
   },
+  avatarWrapper: {
+  alignSelf: 'center',
+  width: 88,
+  height: 88,
+  alignItems: 'center',
+  justifyContent: 'center',
+},
+avatarImage: {
+  width: '100%',
+  height: '100%',
+},
+cameraBadge: {
+  position: 'absolute',
+  right: 0,
+  bottom: 0,
+  width: 28,
+  height: 28,
+  borderRadius: 14,
+  backgroundColor: colors.purple,
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderWidth: 2,
+  borderColor: colors.white,
+},
 });

@@ -32,6 +32,13 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "StudySmart necesita acceso a tus fotos para elegir tu foto de perfil.",
+          "cameraPermission": "StudySmart necesita la cámara para tomar tu foto de perfil."
+        }
       ]
     ],
     "experiments": {
