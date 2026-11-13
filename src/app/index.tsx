@@ -4,15 +4,15 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   Pressable,
+  SafeAreaView,
 } from 'react-native';
 
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 
-import { BottomBar, colors } from '../components/StudyUI';
+import { BottomBar, colors, HapticPressable } from '../components/StudyUI';
 import { useAuthSession } from '../hooks/use-auth-session';
 import { getUserStreak, type UserStreak } from '../services/study-data';
 
@@ -126,13 +126,13 @@ export default function HomeScreen() {
               </Text>
               {session.status === 'signedOut' ||
               (session.status === 'signedIn' && session.user.isAnonymous) ? (
-                <Pressable
+                <HapticPressable
                   onPress={() => router.push('/auth')}
                   accessibilityRole="button"
                   style={styles.signInButton}
                 >
                   <Text style={styles.signInButtonText}>Iniciar sesión</Text>
-                </Pressable>
+                </HapticPressable>
               ) : null}
             </>
           )}

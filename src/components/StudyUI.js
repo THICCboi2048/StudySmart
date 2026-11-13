@@ -1,6 +1,7 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 
 export const colors = {
   background: '#F5EFE6', // Beige crema
@@ -10,6 +11,23 @@ export const colors = {
   white: '#FFFCF7',      // Blanco cálido
   muted: '#8D796B',      // Marrón grisáceo
 };
+
+export const hapticStrong = () => {
+  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+};
+export function HapticPressable({ onPress, onPressIn, haptic = true, ...props }) {
+  return (
+    <Pressable
+      {...props}
+      onPress={(e) => {
+        if (haptic) hapticStrong();
+        onPress?.(e);
+      }}
+    />
+  );
+}
+
+
 export function ScreenHeader({ title, subtitle, onBack, titleSize = 29 }) {
   return (
     <View>
