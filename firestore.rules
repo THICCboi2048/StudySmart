@@ -159,6 +159,15 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
+      allow get: if isRegisteredOwner(userId);
+      allow create, update: if isRegisteredOwner(userId) &&
+      avatarId == 'current' &&
+      hasRequiredFields(request.resource.data, ['photoBase64', 'updatedAt']) &&
+      hasOnlyAllowedFields(request.resource.data, ['photoBase64', 'updatedAt']) &&
+      request.resource.data.photoBase64 is string &&
+      request.resource.data.photoBase64.matches('^data:image/jpeg;base64,.*') &&
+      request.resource.data.photoBase64.size() < 150000 &&
+      request.resource.data.updatedAt == request.time;
       allow get: if isOwner(userId);
       allow create: if isOwner(userId) &&
         uidUnchanged() &&
@@ -253,6 +262,16 @@ service cloud.firestore {
               )
             )
           );
+          match /avatar/{avatarId} {
+          allow get: if isRegisteredOwner(userId);
+          allow create, update: if isRegisteredOwner(userId) &&
+            avatarId == 'current' &&
+            hasRequiredFields(request.resource.data, ['photoBase64', 'updatedAt']) &&
+            hasOnlyAllowedFields(request.resource.data, ['photoBase64', 'updatedAt']) &&
+            request.resource.data.photoBase64 is string &&
+            request.resource.data.photoBase64.size() < 150000 &&
+            request.resource.data.updatedAt == request.time;
+        }
       }
     }
   }

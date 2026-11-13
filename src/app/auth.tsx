@@ -1,32 +1,32 @@
+import { Ionicons } from '@expo/vector-icons';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
+import * as ImagePicker from 'expo-image-picker';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { FirebaseError } from 'firebase/app';
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
 } from 'firebase/auth';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { doc, getDoc, getFirestore, serverTimestamp, setDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
-  View,
-  Alert, 
-  Image
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
-import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
-import { doc, getDoc, getFirestore, setDoc } from 'firebase/firestore';
 import { colors, HapticPressable } from '../components/StudyUI';
-import { getFirebaseAuth } from '../services/firebaseAuth';
-import { isFirebaseConfigured } from '../services/firebase';
 import { useAuthSession } from '../hooks/use-auth-session';
+import { isFirebaseConfigured } from '../services/firebase';
+import { getFirebaseAuth } from '../services/firebaseAuth';
 
 type AuthMode = 'login' | 'register';
 
@@ -93,7 +93,7 @@ export default function AuthScreen() {
 
     let active = true;
 
-    getDoc(doc(getFirestore(), 'users', user.uid))
+    getDoc(doc(getFirestore(), 'users', user.uid, 'avatar', 'current'))
       .then((snap) => {
         if (active) {
           setPhotoURL(snap.data()?.photoBase64 ?? null);
@@ -177,7 +177,12 @@ export default function AuthScreen() {
   }
 
   //STORAGEEE
-  function chooseAvatarSource(): void {
+function chooseAvatarSource(): void {
+  if (Platform.OS === 'web') {
+    pickAvatar('library');
+    return;
+  }
+
   Alert.alert('Foto de perfil', 'Elige una opción', [
     { text: 'Tomar foto', onPress: () => pickAvatar('camera') },
     { text: 'Elegir de la galería', onPress: () => pickAvatar('library') },
@@ -241,12 +246,12 @@ async function uploadAvatar(uri: string): Promise<void> {
     }
 
     const dataUrl = `data:image/jpeg;base64,${resized.base64}`;
-
-    await setDoc(
-      doc(getFirestore(), 'users', currentUser.uid),
-      { photoBase64: dataUrl },
-      { merge: true }
-    );
+    console.log('UID:', currentUser.uid, 'anónimo:', currentUser.isAnonymous, 'email:', currentUser.email);
+    await setDoc(doc(getFirestore(), 'users', currentUser.uid, 'avatar', 'current'), {
+      
+      photoBase64: dataUrl,
+      updatedAt: serverTimestamp(),
+    });
 
     setPhotoURL(dataUrl);
   } catch (error) {
@@ -310,38 +315,55 @@ async function uploadAvatar(uri: string): Promise<void> {
                 accessibilityLabel="Cargando cuenta"
               />
             ) : user ? (
-              <View style={styles.card}>
-                <View style={styles.accountIcon}>
-                  <Ionicons name="person-outline" size={28} color={colors.purple} />
-                </View>
-                <Text style={styles.accountLabel}>Sesión iniciada</Text>
-                <Text style={styles.accountEmail}>{user.email}</Text>
-                {errorMessage || session.error ? (
-                  <Text accessibilityRole="alert" style={styles.error}>
-                    {errorMessage || session.error}
-                  </Text>
-                ) : null}
-                <HapticPressable
-                  onPress={() => router.replace('/')}
-                  accessibilityRole="button"
-                  style={styles.primaryButton}
-                >
-                  <Text style={styles.primaryButtonText}>Ir a estudiar</Text>
-                </HapticPressable>
-                <HapticPressable
-                  onPress={logOut}
-                  disabled={isSubmitting}
-                  accessibilityRole="button"
-                  style={styles.secondaryButton}
-                >
-                  {isSubmitting ? (
-                    <ActivityIndicator color={colors.purple} />
-                  ) : (
-                    <Text style={styles.secondaryButtonText}>Cerrar sesión</Text>
-                  )}
-                </HapticPressable>
-              </View>
-            ) : (
+  <View style={styles.card}>
+    <HapticPressable
+      onPress={chooseAvatarSource}
+      disabled={isUploadingPhoto}
+      accessibilityRole="button"
+      accessibilityLabel="Cambiar foto de perfil"
+      style={styles.avatarWrapper}
+    >
+      <View style={styles.accountIcon}>
+        {isUploadingPhoto ? (
+          <ActivityIndicator color={colors.purple} />
+        ) : photoURL ? (
+          <Image source={{ uri: photoURL }} style={styles.avatarImage} />
+        ) : (
+          <Ionicons name="person-outline" size={28} color={colors.purple} />
+        )}
+      </View>
+      <View style={styles.cameraBadge}>
+        <Ionicons name="camera" size={14} color={colors.white} />
+      </View>
+    </HapticPressable>
+    <Text style={styles.accountLabel}>Sesión iniciada</Text>
+    <Text style={styles.accountEmail}>{user.email}</Text>
+    {errorMessage || session.error ? (
+      <Text accessibilityRole="alert" style={styles.error}>
+        {errorMessage || session.error}
+      </Text>
+    ) : null}
+    <HapticPressable
+      onPress={() => router.replace('/')}
+      accessibilityRole="button"
+      style={styles.primaryButton}
+    >
+      <Text style={styles.primaryButtonText}>Ir a estudiar</Text>
+    </HapticPressable>
+    <HapticPressable
+      onPress={logOut}
+      disabled={isSubmitting}
+      accessibilityRole="button"
+      style={styles.secondaryButton}
+    >
+      {isSubmitting ? (
+        <ActivityIndicator color={colors.purple} />
+      ) : (
+        <Text style={styles.secondaryButtonText}>Cerrar sesión</Text>
+      )}
+    </HapticPressable>
+  </View>
+) : (
               <View style={styles.card}>
                 <View style={styles.modeSwitch}>
                   <HapticPressable
