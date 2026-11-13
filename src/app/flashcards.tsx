@@ -3,7 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 
-import { BottomBar, colors } from '../components/StudyUI';
+import { BottomBar, colors, HapticPressable } from '../components/StudyUI';
 import { useAuthSession } from '../hooks/use-auth-session';
 import {
   getActivityDateKey,
