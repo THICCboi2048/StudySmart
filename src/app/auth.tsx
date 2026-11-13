@@ -1,28 +1,32 @@
+import { Ionicons } from '@expo/vector-icons';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
+import * as ImagePicker from 'expo-image-picker';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { FirebaseError } from 'firebase/app';
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
 } from 'firebase/auth';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { doc, getDoc, getFirestore, serverTimestamp, setDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
-  View,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-
 import { colors, HapticPressable } from '../components/StudyUI';
-import { getFirebaseAuth } from '../services/firebaseAuth';
-import { isFirebaseConfigured } from '../services/firebase';
 import { useAuthSession } from '../hooks/use-auth-session';
+import { isFirebaseConfigured } from '../services/firebase';
+import { getFirebaseAuth } from '../services/firebaseAuth';
 
 type AuthMode = 'login' | 'register';
 
@@ -78,6 +82,31 @@ export default function AuthScreen() {
   const [errorMessage, setErrorMessage] = useState('');
   const user = session.user;
   const isLoading = session.status === 'loading';
+  const [photoURL, setPhotoURL] = useState<string | null>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+
+  useEffect(() => {
+    if (!user) {
+      setPhotoURL(null);
+      return;
+    }
+
+    let active = true;
+
+    getDoc(doc(getFirestore(), 'users', user.uid, 'avatar', 'current'))
+      .then((snap) => {
+        if (active) {
+          setPhotoURL(snap.data()?.photoBase64 ?? null);
+        }
+      })
+      .catch((error) => {
+        console.error('Error al cargar foto:', error?.code, error?.message);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [user?.uid]);
 
   useEffect(() => {
     if (session.status !== 'signedIn') {
@@ -147,6 +176,93 @@ export default function AuthScreen() {
     }
   }
 
+  //STORAGEEE
+function chooseAvatarSource(): void {
+  if (Platform.OS === 'web') {
+    pickAvatar('library');
+    return;
+  }
+
+  Alert.alert('Foto de perfil', 'Elige una opción', [
+    { text: 'Tomar foto', onPress: () => pickAvatar('camera') },
+    { text: 'Elegir de la galería', onPress: () => pickAvatar('library') },
+    { text: 'Cancelar', style: 'cancel' },
+  ]);
+}
+
+async function pickAvatar(source: 'camera' | 'library'): Promise<void> {
+  setErrorMessage('');
+
+  try {
+    if (source === 'camera') {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permission.granted) {
+        setErrorMessage('Activa el permiso de cámara en los ajustes del teléfono.');
+        return;
+      }
+    }
+
+    const options: ImagePicker.ImagePickerOptions = {
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+    };
+
+    const result =
+      source === 'camera'
+        ? await ImagePicker.launchCameraAsync(options)
+        : await ImagePicker.launchImageLibraryAsync(options);
+
+    if (result.canceled) {
+      return;
+    }
+
+    await uploadAvatar(result.assets[0].uri);
+  } catch (error) {
+    console.error('Error al elegir foto:', error);
+    setErrorMessage('No se pudo abrir la cámara o la galería.');
+  }
+}
+
+async function uploadAvatar(uri: string): Promise<void> {
+  const currentUser = getFirebaseAuth().currentUser;
+  if (!currentUser) {
+    return;
+  }
+
+  setIsUploadingPhoto(true);
+
+  try {
+    // Reducir a 256x256 y comprimir para que quepa en Firestore
+    const resized = await manipulateAsync(
+      uri,
+      [{ resize: { width: 256, height: 256 } }],
+      { compress: 0.5, format: SaveFormat.JPEG, base64: true }
+    );
+
+    if (!resized.base64) {
+      throw new Error('No se pudo procesar la imagen.');
+    }
+
+    const dataUrl = `data:image/jpeg;base64,${resized.base64}`;
+    console.log('UID:', currentUser.uid, 'anónimo:', currentUser.isAnonymous, 'email:', currentUser.email);
+    await setDoc(doc(getFirestore(), 'users', currentUser.uid, 'avatar', 'current'), {
+      
+      photoBase64: dataUrl,
+      updatedAt: serverTimestamp(),
+    });
+
+    setPhotoURL(dataUrl);
+  } catch (error) {
+    console.error('Error al guardar foto:', error);
+    setErrorMessage('No se pudo guardar la foto. Inténtalo de nuevo.');
+  } finally {
+    setIsUploadingPhoto(false);
+  }
+}
+/////////
+
   function changeMode(nextMode: AuthMode): void {
     setMode(nextMode);
     setErrorMessage('');
@@ -199,38 +315,55 @@ export default function AuthScreen() {
                 accessibilityLabel="Cargando cuenta"
               />
             ) : user ? (
-              <View style={styles.card}>
-                <View style={styles.accountIcon}>
-                  <Ionicons name="person-outline" size={28} color={colors.purple} />
-                </View>
-                <Text style={styles.accountLabel}>Sesión iniciada</Text>
-                <Text style={styles.accountEmail}>{user.email}</Text>
-                {errorMessage || session.error ? (
-                  <Text accessibilityRole="alert" style={styles.error}>
-                    {errorMessage || session.error}
-                  </Text>
-                ) : null}
-                <HapticPressable
-                  onPress={() => router.replace('/')}
-                  accessibilityRole="button"
-                  style={styles.primaryButton}
-                >
-                  <Text style={styles.primaryButtonText}>Ir a estudiar</Text>
-                </HapticPressable>
-                <HapticPressable
-                  onPress={logOut}
-                  disabled={isSubmitting}
-                  accessibilityRole="button"
-                  style={styles.secondaryButton}
-                >
-                  {isSubmitting ? (
-                    <ActivityIndicator color={colors.purple} />
-                  ) : (
-                    <Text style={styles.secondaryButtonText}>Cerrar sesión</Text>
-                  )}
-                </HapticPressable>
-              </View>
-            ) : (
+  <View style={styles.card}>
+    <HapticPressable
+      onPress={chooseAvatarSource}
+      disabled={isUploadingPhoto}
+      accessibilityRole="button"
+      accessibilityLabel="Cambiar foto de perfil"
+      style={styles.avatarWrapper}
+    >
+      <View style={styles.accountIcon}>
+        {isUploadingPhoto ? (
+          <ActivityIndicator color={colors.purple} />
+        ) : photoURL ? (
+          <Image source={{ uri: photoURL }} style={styles.avatarImage} />
+        ) : (
+          <Ionicons name="person-outline" size={28} color={colors.purple} />
+        )}
+      </View>
+      <View style={styles.cameraBadge}>
+        <Ionicons name="camera" size={14} color={colors.white} />
+      </View>
+    </HapticPressable>
+    <Text style={styles.accountLabel}>Sesión iniciada</Text>
+    <Text style={styles.accountEmail}>{user.email}</Text>
+    {errorMessage || session.error ? (
+      <Text accessibilityRole="alert" style={styles.error}>
+        {errorMessage || session.error}
+      </Text>
+    ) : null}
+    <HapticPressable
+      onPress={() => router.replace('/')}
+      accessibilityRole="button"
+      style={styles.primaryButton}
+    >
+      <Text style={styles.primaryButtonText}>Ir a estudiar</Text>
+    </HapticPressable>
+    <HapticPressable
+      onPress={logOut}
+      disabled={isSubmitting}
+      accessibilityRole="button"
+      style={styles.secondaryButton}
+    >
+      {isSubmitting ? (
+        <ActivityIndicator color={colors.purple} />
+      ) : (
+        <Text style={styles.secondaryButtonText}>Cerrar sesión</Text>
+      )}
+    </HapticPressable>
+  </View>
+) : (
               <View style={styles.card}>
                 <View style={styles.modeSwitch}>
                   <HapticPressable
@@ -536,4 +669,28 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 6,
   },
+  avatarWrapper: {
+  alignSelf: 'center',
+  width: 88,
+  height: 88,
+  alignItems: 'center',
+  justifyContent: 'center',
+},
+avatarImage: {
+  width: '100%',
+  height: '100%',
+},
+cameraBadge: {
+  position: 'absolute',
+  right: 0,
+  bottom: 0,
+  width: 28,
+  height: 28,
+  borderRadius: 14,
+  backgroundColor: colors.purple,
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderWidth: 2,
+  borderColor: colors.white,
+},
 });

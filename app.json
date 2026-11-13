@@ -33,8 +33,17 @@
           "imageWidth": 76
         }
       ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "StudySmart necesita acceso a tus fotos para elegir tu foto de perfil.",
+          "cameraPermission": "StudySmart necesita la cámara para tomar tu foto de perfil."
+        }
+      ],
+      [
       "expo-status-bar",
       "expo-web-browser"
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
