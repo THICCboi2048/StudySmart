@@ -1,4 +1,21 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { FirebaseError } from 'firebase/app';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+
+import { useAuthSession } from '../hooks/use-auth-session';
+import {
+  createUserFlashcardSet,
+  createUserNote,
+  createUserNotebook,
+  deleteUserFlashcardSet,
+  deleteUserNote,
+  deleteUserNotebook,
+  getAllUserFlashcards,
+  getAllUserNotes,
+  getUserNotebooks,
+  updateUserFlashcardSet,
+  updateUserNote,
+  type FlashcardInput as StoredFlashcardInput,
+} from '../services/study-data';
 
 export type Card = {
   id: string;
@@ -33,68 +50,198 @@ export type Notebook = {
 
 type NotebookContextValue = {
   notebooks: Notebook[];
-  addNotebook: (name: string) => void;
-  deleteNotebook: (notebookId: string) => void;
-  deleteFlashcardSet: (notebookId: string, flashcardSetId: string) => void;
-  deleteNote: (notebookId: string, noteId: string) => void;
+  loadStatus: 'loading' | 'ready' | 'error';
+  isSignedIn: boolean;
+  error: string;
+  clearError: () => void;
+  addNotebook: (name: string) => Promise<void>;
+  deleteNotebook: (notebookId: string) => Promise<void>;
+  deleteFlashcardSet: (notebookId: string, flashcardSetId: string) => Promise<void>;
+  deleteNote: (notebookId: string, noteId: string) => Promise<void>;
   getNotebook: (notebookId?: string) => Notebook | undefined;
-  addFlashcardSet: (notebookId: string, name: string, cards?: Omit<Card, 'id'>[]) => void;
+  addFlashcardSet: (
+    notebookId: string,
+    name: string,
+    cards?: Omit<Card, 'id'>[]
+  ) => Promise<void>;
   updateFlashcardSet: (
     notebookId: string,
     flashcardSetId: string,
     name: string,
-    cards: FlashcardInput[],
-  ) => void;
-  addNote: (notebookId: string, name: string, content: string) => void;
-  updateNote: (notebookId: string, noteId: string, name: string, content: string) => void;
+    cards: FlashcardInput[]
+  ) => Promise<void>;
+  addNote: (notebookId: string, name: string, content: string) => Promise<void>;
+  updateNote: (
+    notebookId: string,
+    noteId: string,
+    name: string,
+    content: string
+  ) => Promise<void>;
 };
 
 const NotebookContext = createContext<NotebookContextValue | null>(null);
 
+function getErrorMessage(error: unknown): string {
+  if (error instanceof FirebaseError && error.code === 'permission-denied') {
+    return 'Firebase rechazó la operación. Verifica las reglas de Firestore.';
+  }
+  if (error instanceof FirebaseError && error.code === 'unavailable') {
+    return 'No se pudo conectar con Firebase. Revisa tu conexión.';
+  }
+  if (error instanceof Error) return error.message;
+  return 'Ocurrió un error al guardar los datos.';
+}
+
+async function loadNotebookData(uid: string): Promise<Notebook[]> {
+  const [storedNotebooks, storedFlashcards, storedNotes] = await Promise.all([
+    getUserNotebooks(uid),
+    getAllUserFlashcards(uid),
+    getAllUserNotes(uid),
+  ]);
+  const flashcardsByNotebook = new Map<string, Map<string, FlashcardSet>>();
+  const notesByNotebook = new Map<string, Note[]>();
+
+  storedFlashcards.forEach((card) => {
+    let decks = flashcardsByNotebook.get(card.notebookId);
+    if (!decks) {
+      decks = new Map();
+      flashcardsByNotebook.set(card.notebookId, decks);
+    }
+
+    let deck = decks.get(card.deckId);
+    if (!deck) {
+      deck = { id: card.deckId, name: card.deckTitle, cards: [] };
+      decks.set(card.deckId, deck);
+    }
+    deck.cards.push({ id: card.id, title: card.front, content: card.back });
+  });
+
+  storedNotes.forEach((note) => {
+    const notes = notesByNotebook.get(note.notebookId) ?? [];
+    notes.push({ id: note.id, name: note.name, content: note.content });
+    notesByNotebook.set(note.notebookId, notes);
+  });
+
+  return storedNotebooks.map((notebook) => ({
+    id: notebook.id,
+    name: notebook.name,
+    flashcardSets: [...(flashcardsByNotebook.get(notebook.id)?.values() ?? [])],
+    notes: notesByNotebook.get(notebook.id) ?? [],
+  }));
+}
+
 export function NotebookProvider({ children }: { children: ReactNode }) {
+  const session = useAuthSession();
   const [notebooks, setNotebooks] = useState<Notebook[]>([]);
+  const [loadedUid, setLoadedUid] = useState('');
+  const [loadError, setLoadError] = useState('');
+  const [mutationError, setMutationError] = useState('');
+  const uid = session.status === 'signedIn' ? session.user.uid : null;
 
-  function addNotebook(name: string) {
-    setNotebooks((current) => [
-      ...current,
-      {
-        id: `${Date.now()}-${current.length}`,
-        name,
-        flashcardSets: [],
-        notes: [],
-      },
-    ]);
+  useEffect(() => {
+    let active = true;
+
+    if (!uid) return () => {
+      active = false;
+    };
+
+    void loadNotebookData(uid)
+      .then((loadedNotebooks) => {
+        if (active) {
+          setNotebooks(loadedNotebooks);
+          setLoadedUid(uid);
+          setLoadError('');
+        }
+      })
+      .catch((loadError: unknown) => {
+        if (active) {
+          setLoadedUid(uid);
+          setLoadError(getErrorMessage(loadError));
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [uid]);
+
+  const loadStatus: NotebookContextValue['loadStatus'] =
+    session.status === 'loading' || (uid !== null && loadedUid !== uid)
+      ? 'loading'
+      : session.status === 'error' || (!!uid && !!loadError)
+        ? 'error'
+        : 'ready';
+  const error =
+    session.status === 'error'
+      ? session.error
+      : uid
+        ? mutationError || (uid === loadedUid ? loadError : '')
+        : '';
+  const visibleNotebooks =
+    uid && loadedUid === uid ? notebooks : [];
+
+  async function performMutation(
+    mutation: (currentUid: string) => Promise<void>
+  ): Promise<void> {
+    if (!uid) {
+      const signInError = new Error('Inicia sesión para guardar tus datos.');
+      setMutationError(signInError.message);
+      throw signInError;
+    }
+
+    setMutationError('');
+    try {
+      await mutation(uid);
+      const updatedNotebooks = await loadNotebookData(uid);
+      setNotebooks(updatedNotebooks);
+      setLoadedUid(uid);
+      setLoadError('');
+    } catch (mutationError) {
+      setMutationError(getErrorMessage(mutationError));
+      throw mutationError;
+    }
   }
 
-  function deleteNotebook(notebookId: string) {
-    setNotebooks((current) => current.filter((n) => n.id !== notebookId));
+  function addNotebook(name: string): Promise<void> {
+    return performMutation((currentUid) => createUserNotebook(currentUid, name));
   }
 
-  function deleteFlashcardSet(notebookId: string, flashcardSetId: string) {
-    setNotebooks((current) =>
-      current.map((notebook) =>
-        notebook.id === notebookId
-          ? {
-            ...notebook,
-            flashcardSets: notebook.flashcardSets.filter(
-              (flashcardSet) => flashcardSet.id !== flashcardSetId,
-            ),
-          }
-          : notebook,
-      ),
+  function deleteNotebook(notebookId: string): Promise<void> {
+    return performMutation((currentUid) =>
+      deleteUserNotebook(currentUid, notebookId)
     );
   }
 
-  function deleteNote(notebookId: string, noteId: string) {
-    setNotebooks((current) =>
-      current.map((notebook) =>
-        notebook.id === notebookId
-          ? {
-            ...notebook,
-            notes: notebook.notes.filter((note) => note.id !== noteId),
-          }
-          : notebook,
-      ),
+  function deleteFlashcardSet(
+    notebookId: string,
+    flashcardSetId: string
+  ): Promise<void> {
+    return performMutation((currentUid) =>
+      deleteUserFlashcardSet(currentUid, notebookId, flashcardSetId)
+    );
+  }
+
+  function deleteNote(notebookId: string, noteId: string): Promise<void> {
+    return performMutation((currentUid) =>
+      deleteUserNote(currentUid, notebookId, noteId)
+    );
+  }
+
+  function getNotebook(notebookId?: string) {
+    return visibleNotebooks.find((notebook) => notebook.id === notebookId);
+  }
+
+  function addFlashcardSet(
+    notebookId: string,
+    name: string,
+    cards: Omit<Card, 'id'>[] = []
+  ): Promise<void> {
+    const storedCards: StoredFlashcardInput[] = cards.map((card) => ({
+      title: card.title,
+      content: card.content,
+    }));
+    return performMutation((currentUid) =>
+      createUserFlashcardSet(currentUid, notebookId, name, storedCards)
     );
   }
 
@@ -102,100 +249,48 @@ export function NotebookProvider({ children }: { children: ReactNode }) {
     notebookId: string,
     flashcardSetId: string,
     name: string,
-    cards: FlashcardInput[],
-  ) {
-    const now = Date.now();
-    setNotebooks((current) =>
-      current.map((notebook) =>
-        notebook.id === notebookId
-          ? {
-            ...notebook,
-            flashcardSets: notebook.flashcardSets.map((flashcardSet) =>
-              flashcardSet.id === flashcardSetId
-                ? {
-                  ...flashcardSet,
-                  name,
-                  cards: cards.map((card, index) => ({
-                    ...card,
-                    id: card.id ?? `${now}-c${index}`,
-                  })),
-                }
-                : flashcardSet,
-            ),
-          }
-          : notebook,
-      ),
+    cards: FlashcardInput[]
+  ): Promise<void> {
+    return performMutation((currentUid) =>
+      updateUserFlashcardSet(
+        currentUid,
+        notebookId,
+        flashcardSetId,
+        name,
+        cards
+      )
     );
   }
 
-  function getNotebook(notebookId?: string) {
-    return notebooks.find((n) => n.id === notebookId);
-  }
-
-  function addFlashcardSet(
+  function addNote(
     notebookId: string,
     name: string,
-    cards: Omit<Card, 'id'>[] = [],
-  ) {
-    const now = Date.now();
-    setNotebooks((current) =>
-      current.map((n) =>
-        n.id === notebookId
-          ? {
-            ...n,
-            flashcardSets: [
-              ...n.flashcardSets,
-              {
-                id: `${now}-${n.flashcardSets.length}`,
-                name,
-                cards: cards.map((c, i) => ({ id: `${now}-c${i}`, ...c })),
-              },
-            ],
-          }
-          : n,
-      ),
+    content: string
+  ): Promise<void> {
+    return performMutation((currentUid) =>
+      createUserNote(currentUid, notebookId, name, content)
     );
   }
 
-  function addNote(notebookId: string, name: string, content: string) {
-    setNotebooks((current) =>
-      current.map((notebook) =>
-        notebook.id === notebookId
-          ? {
-            ...notebook,
-            notes: [
-              ...notebook.notes,
-              {
-                id: `${Date.now()}-${notebook.notes.length}`,
-                name,
-                content,
-              },
-            ],
-          }
-          : notebook,
-      ),
-    );
-  }
-
-  function updateNote(notebookId: string, noteId: string, name: string, content: string) {
-    setNotebooks((current) =>
-      current.map((notebook) =>
-        notebook.id === notebookId
-          ? {
-            ...notebook,
-            notes: notebook.notes.map((note) =>
-              note.id === noteId ? { ...note, name, content } : note,
-            ),
-          }
-          : notebook,
-      ),
+  function updateNote(
+    notebookId: string,
+    noteId: string,
+    name: string,
+    content: string
+  ): Promise<void> {
+    return performMutation((currentUid) =>
+      updateUserNote(currentUid, notebookId, noteId, name, content)
     );
   }
 
   return (
     <NotebookContext.Provider
       value={{
-        notebooks,
+        notebooks: visibleNotebooks,
+        loadStatus,
+        isSignedIn: session.status === 'signedIn',
+        error,
+        clearError: () => setMutationError(''),
         addNotebook,
         deleteNotebook,
         deleteFlashcardSet,

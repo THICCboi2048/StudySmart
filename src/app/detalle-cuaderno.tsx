@@ -5,6 +5,7 @@ import {
     SafeAreaView,
     ScrollView,
     Modal,
+    ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -19,7 +20,15 @@ import { useNotebooks, FlashcardSet, Note } from '../context/NotebookContext';
 export default function DetalleCuadernoScreen() {
     const router = useRouter();
     const params = useLocalSearchParams();
-    const { getNotebook, deleteFlashcardSet, deleteNote } = useNotebooks();
+    const {
+        getNotebook,
+        deleteFlashcardSet,
+        deleteNote,
+        loadStatus,
+        isSignedIn,
+        error,
+        clearError,
+    } = useNotebooks();
     const [createModalVisible, setCreateModalVisible] = useState(false);
     const [selectedNote, setSelectedNote] = useState<Note | null>(null);
     const [showDeleteOptions, setShowDeleteOptions] = useState(false);
@@ -28,6 +37,7 @@ export default function DetalleCuadernoScreen() {
         id: string;
         name: string;
     } | null>(null);
+    const [deleting, setDeleting] = useState(false);
 
     const id = Array.isArray(params.id) ? params.id[0] : params.id;
     const notebook = getNotebook(id);
@@ -75,16 +85,22 @@ export default function DetalleCuadernoScreen() {
         router.push({ pathname: '/crear-nota', params: { id } });
     }
 
-    function confirmarEliminacion() {
-        if (!id || !itemToDelete) return;
+    async function confirmarEliminacion() {
+        if (!id || !itemToDelete || deleting) return;
 
-        if (itemToDelete.type === 'flashcard') {
-            deleteFlashcardSet(id, itemToDelete.id);
-        } else {
-            deleteNote(id, itemToDelete.id);
+        setDeleting(true);
+        try {
+            if (itemToDelete.type === 'flashcard') {
+                await deleteFlashcardSet(id, itemToDelete.id);
+            } else {
+                await deleteNote(id, itemToDelete.id);
+            }
+            setItemToDelete(null);
+        } catch {
+            // The context exposes the error to the screen.
+        } finally {
+            setDeleting(false);
         }
-
-        setItemToDelete(null);
     }
 
 
@@ -126,6 +142,15 @@ export default function DetalleCuadernoScreen() {
                     style={styles.list}
                     contentContainerStyle={styles.listContent}
                 >
+                    {loadStatus === 'loading' ? (
+                        <ActivityIndicator color={colors.purple} accessibilityLabel="Cargando cuaderno" />
+                    ) : loadStatus === 'error' || error ? (
+                        <Text accessibilityRole="alert" style={styles.errorMessage}>{error}</Text>
+                    ) : !isSignedIn ? (
+                        <Text style={styles.emptyState}>Inicia sesión para ver este cuaderno.</Text>
+                    ) : !notebook ? (
+                        <Text style={styles.emptyState}>No se encontró el cuaderno.</Text>
+                    ) : null}
                     {/* FLASHCARDS */}
                     <Text style={styles.sectionTitle}>Flashcards</Text>
                     {flashcards.length === 0 ? (
@@ -232,6 +257,7 @@ export default function DetalleCuadernoScreen() {
                 <View style={styles.bottom}>
                     <BottomBar
                         active="notebooks"
+                        showAdd={isSignedIn}
                         addLabel="Crear"
                         onAdd={() => setCreateModalVisible(true)}
                     />
@@ -330,7 +356,10 @@ export default function DetalleCuadernoScreen() {
                 visible={itemToDelete !== null}
                 transparent
                 animationType="fade"
-                onRequestClose={() => setItemToDelete(null)}
+                onRequestClose={() => {
+                    setItemToDelete(null);
+                    clearError();
+                }}
             >
                 <View style={styles.modalOverlay}>
                     <View style={styles.confirmationCard}>
@@ -338,11 +367,17 @@ export default function DetalleCuadernoScreen() {
                             Eliminar {itemToDelete?.type === 'flashcard' ? 'flashcard' : 'nota'}
                         </Text>
                         <Text style={styles.createMessage}>
-                            ¿Quieres eliminar "{itemToDelete?.name}"?
+                            ¿Quieres eliminar &quot;{itemToDelete?.name}&quot;?
                         </Text>
+                        {error ? (
+                            <Text accessibilityRole="alert" style={styles.errorMessage}>{error}</Text>
+                        ) : null}
                         <View style={styles.confirmationActions}>
                             <HapticPressable
-                                onPress={() => setItemToDelete(null)}
+                                onPress={() => {
+                                    setItemToDelete(null);
+                                    clearError();
+                                }}
                                 accessibilityRole="button"
                                 accessibilityLabel="Cancelar eliminación"
                                 style={({ pressed }) => [
@@ -354,6 +389,7 @@ export default function DetalleCuadernoScreen() {
                             </HapticPressable>
                             <HapticPressable
                                 onPress={confirmarEliminacion}
+                                disabled={deleting}
                                 accessibilityRole="button"
                                 accessibilityLabel="Confirmar eliminación"
                                 style={({ pressed }) => [
@@ -430,6 +466,12 @@ const styles = StyleSheet.create({
     emptyState: {
         fontSize: 15,
         color: colors.muted,
+    },
+    errorMessage: {
+        marginBottom: 10,
+        color: '#B3261E',
+        fontSize: 14,
+        lineHeight: 20,
     },
     card: {
         minHeight: 66,

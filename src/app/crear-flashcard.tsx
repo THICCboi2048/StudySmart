@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
     SafeAreaView,
     StyleSheet,
@@ -10,7 +10,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { BottomBar, ScreenHeader, colors, HapticPressable } from '../components/StudyUI';
-import { FlashcardInput, useNotebooks } from '../context/NotebookContext';
+import {
+    FlashcardInput,
+    useNotebooks,
+} from '../context/NotebookContext';
 import {
     MAX_FLASHCARD_CONTENT_LENGTH,
     MAX_TITLE_LENGTH,
@@ -26,39 +29,58 @@ const nuevoBorrador = (): Borrador => ({
 });
 
 export default function CrearFlashcardScreen() {
-    const router = useRouter();
     const params = useLocalSearchParams();
-    const { getNotebook, addFlashcardSet, updateFlashcardSet } = useNotebooks();
-
     const notebookId = Array.isArray(params.id) ? params.id[0] : params.id;
     const flashcardId = Array.isArray(params.flashcardId)
         ? params.flashcardId[0]
         : params.flashcardId;
+
+    return (
+        <CrearFlashcardForm
+            key={`${notebookId ?? ''}:${flashcardId ?? 'new'}`}
+            notebookId={notebookId}
+            flashcardId={flashcardId}
+        />
+    );
+}
+
+function CrearFlashcardForm({
+    notebookId,
+    flashcardId,
+}: {
+    notebookId?: string;
+    flashcardId?: string;
+}) {
+    const router = useRouter();
+    const {
+        getNotebook,
+        addFlashcardSet,
+        updateFlashcardSet,
+        error,
+        clearError,
+    } = useNotebooks();
+
     const notebook = getNotebook(notebookId);
     const flashcardSet = notebook?.flashcardSets.find((item) => item.id === flashcardId);
 
     const [nombre, setNombre] = useState(flashcardSet?.name ?? '');
-    const [borradores, setBorradores] = useState<Borrador[]>([nuevoBorrador()]);
+    const [borradores, setBorradores] = useState<Borrador[]>(() =>
+        flashcardSet && flashcardSet.cards.length > 0
+            ? flashcardSet.cards.map((card) => ({
+                key: card.id,
+                cardId: card.id,
+                title: card.title,
+                content: card.content,
+            }))
+            : [nuevoBorrador()],
+    );
+    const [saving, setSaving] = useState(false);
     const isEditing = !!flashcardId;
 
     const puedeCrear =
         nombre.trim().length > 0 &&
         !!notebook &&
         (!isEditing || !!flashcardSet);
-
-    useEffect(() => {
-        setNombre(flashcardSet?.name ?? '');
-        setBorradores(
-            flashcardSet && flashcardSet.cards.length > 0
-                ? flashcardSet.cards.map((card) => ({
-                    key: card.id,
-                    cardId: card.id,
-                    title: card.title,
-                    content: card.content,
-                }))
-                : [nuevoBorrador()],
-        );
-    }, [flashcardId, flashcardSet?.name, flashcardSet?.cards]);
 
     function actualizar(key: string, campo: 'title' | 'content', valor: string) {
         setBorradores((actual) =>
@@ -76,8 +98,8 @@ export default function CrearFlashcardScreen() {
         );
     }
 
-    function guardarFlashcard() {
-        if (!puedeCrear || !notebookId) return;
+    async function guardarFlashcard() {
+        if (!puedeCrear || !notebookId || saving) return;
 
         const cards: FlashcardInput[] = borradores
             .map((b) => ({
@@ -87,17 +109,25 @@ export default function CrearFlashcardScreen() {
             }))
             .filter((c) => c.title || c.content);
 
-        if (flashcardId) {
-            updateFlashcardSet(notebookId, flashcardId, nombre.trim(), cards);
-        } else {
-            addFlashcardSet(
-                notebookId,
-                nombre.trim(),
-                cards.map(({ title, content }) => ({ title, content })),
-            );
-        }
+        clearError();
+        setSaving(true);
+        try {
+            if (flashcardId) {
+                await updateFlashcardSet(notebookId, flashcardId, nombre.trim(), cards);
+            } else {
+                await addFlashcardSet(
+                    notebookId,
+                    nombre.trim(),
+                    cards.map(({ title, content }) => ({ title, content })),
+                );
+            }
 
-        router.dismissTo({ pathname: '/detalle-cuaderno', params: { id: notebookId } });
+            router.dismissTo({ pathname: '/detalle-cuaderno', params: { id: notebookId } });
+        } catch {
+            // The context exposes the error to the screen.
+        } finally {
+            setSaving(false);
+        }
     }
 
     return (
@@ -122,6 +152,9 @@ export default function CrearFlashcardScreen() {
                                 : 'No se encontró el cuaderno. Vuelve a la lista e inténtalo de nuevo.'}
                         </Text>
                     )}
+                    {error ? (
+                        <Text accessibilityRole="alert" style={styles.errorMessage}>{error}</Text>
+                    ) : null}
                     <Text style={styles.label}>Nombre del set</Text>
                     <TextInput
                         value={nombre}
@@ -184,14 +217,14 @@ export default function CrearFlashcardScreen() {
 
                     <HapticPressable
                         onPress={guardarFlashcard}
-                        disabled={!puedeCrear}
+                        disabled={!puedeCrear || saving}
                         accessibilityRole="button"
                         accessibilityLabel={
                             isEditing ? 'Guardar cambios de la flashcard' : 'Crear flashcard'
                         }
                         style={({ pressed }) => [
                             styles.createButton,
-                            !puedeCrear && styles.createButtonDisabled,
+                            (!puedeCrear || saving) && styles.createButtonDisabled,
                             pressed && styles.pressed,
                         ]}
                     >

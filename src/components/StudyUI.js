@@ -16,6 +16,9 @@ export const hapticStrong = () => {
   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
 };
 
+/**
+ * @param {import('react-native').PressableProps & { haptic?: boolean }} props
+ */
 export function HapticPressable({ onPress, haptic = true, ...props }) {
   return (
     <Pressable
@@ -28,7 +31,7 @@ export function HapticPressable({ onPress, haptic = true, ...props }) {
   );
 }
 
-export function ScreenHeader({ title, subtitle, onBack, titleSize = 29 }) {
+export function ScreenHeader({ title, subtitle = '', onBack, titleSize = 29 }) {
   return (
     <View>
       <View style={styles.screenHeader}>

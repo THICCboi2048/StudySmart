@@ -6,6 +6,7 @@ import {
   SafeAreaView,
   ScrollView,
   Modal,
+  ActivityIndicator,
 } from 'react-native';
 
 import { Ionicons } from '@expo/vector-icons';
@@ -14,21 +15,22 @@ import {
   colors,
   HapticPressable,
 } from '../components/StudyUI';
-import { useNotebooks } from '../context/NotebookContext';
+import { useNotebooks, type Notebook } from '../context/NotebookContext';
 import { useRouter } from 'expo-router';
-
-const iconos: React.ComponentProps<typeof Ionicons>['name'][] = [
-  'color-palette-outline',
-  'calculator-outline',
-  'book-outline',
-  'restaurant-outline',
-];
 
 export default function CuadernosScreen() {
   const router = useRouter();
-  const { notebooks, deleteNotebook } = useNotebooks();
-  const [notebookToDelete, setNotebookToDelete] = useState(null);
+  const {
+    notebooks,
+    deleteNotebook,
+    loadStatus,
+    isSignedIn,
+    error,
+    clearError,
+  } = useNotebooks();
+  const [notebookToDelete, setNotebookToDelete] = useState<Notebook | null>(null);
   const [mostrarOpcionesEliminacion, setMostrarOpcionesEliminacion] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   function abrirCuaderno(notebook: Notebook) {
     router.push({
@@ -37,11 +39,18 @@ export default function CuadernosScreen() {
     });
   }
 
-  function confirmarEliminacion() {
-    if (!notebookToDelete) return;
+  async function confirmarEliminacion() {
+    if (!notebookToDelete || deleting) return;
 
-    deleteNotebook(notebookToDelete.id);
-    setNotebookToDelete(null);
+    setDeleting(true);
+    try {
+      await deleteNotebook(notebookToDelete.id);
+      setNotebookToDelete(null);
+    } catch {
+      // The context exposes the error to the screen.
+    } finally {
+      setDeleting(false);
+    }
   }
 
   return (
@@ -76,7 +85,22 @@ export default function CuadernosScreen() {
           contentContainerStyle={styles.notebooksContent}
           keyboardShouldPersistTaps="handled"
         >
-          {notebooks.length === 0 ? (
+          {loadStatus === 'loading' ? (
+            <ActivityIndicator color={colors.purple} accessibilityLabel="Cargando cuadernos" />
+          ) : loadStatus === 'error' ? (
+            <Text accessibilityRole="alert" style={styles.errorMessage}>{error}</Text>
+          ) : !isSignedIn ? (
+            <View>
+              <Text style={styles.emptyState}>Inicia sesión para ver tus cuadernos.</Text>
+              <HapticPressable
+                onPress={() => router.push('/auth')}
+                accessibilityRole="button"
+                style={styles.signInButton}
+              >
+                <Text style={styles.signInButtonText}>Iniciar sesión</Text>
+              </HapticPressable>
+            </View>
+          ) : notebooks.length === 0 ? (
             <Text style={styles.emptyState}>No hay cuadernos creados</Text>
           ) : (notebooks.map((notebook) => (
             <View key={notebook.id} style={styles.notebookCard}>
@@ -109,10 +133,13 @@ export default function CuadernosScreen() {
               )}
             </View>
           )))}
+          {loadStatus === 'ready' && isSignedIn && error ? (
+            <Text accessibilityRole="alert" style={styles.errorMessage}>{error}</Text>
+          ) : null}
         </ScrollView>
 
         <View style={styles.bottom}>
-          <BottomBar active="notebooks" />
+          <BottomBar active="notebooks" showAdd={isSignedIn} />
         </View>
       </View>
 
@@ -120,17 +147,26 @@ export default function CuadernosScreen() {
         visible={notebookToDelete !== null}
         transparent
         animationType="fade"
-        onRequestClose={() => setNotebookToDelete(null)}
+        onRequestClose={() => {
+          setNotebookToDelete(null);
+          clearError();
+        }}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.confirmationCard}>
             <Text style={styles.confirmationTitle}>Eliminar cuaderno</Text>
             <Text style={styles.confirmationMessage}>
-              ¿Quieres eliminar "{notebookToDelete?.name}"?
+              ¿Quieres eliminar &quot;{notebookToDelete?.name}&quot;?
             </Text>
+            {error ? (
+              <Text accessibilityRole="alert" style={styles.errorMessage}>{error}</Text>
+            ) : null}
             <View style={styles.confirmationActions}>
               <HapticPressable
-                onPress={() => setNotebookToDelete(null)}
+                onPress={() => {
+                  setNotebookToDelete(null);
+                  clearError();
+                }}
                 accessibilityRole="button"
                 accessibilityLabel="Cancelar eliminación"
                 style={({ pressed }) => [
@@ -142,6 +178,7 @@ export default function CuadernosScreen() {
               </HapticPressable>
               <HapticPressable
                 onPress={confirmarEliminacion}
+                disabled={deleting}
                 accessibilityRole="button"
                 accessibilityLabel="Confirmar eliminación"
                 style={({ pressed }) => [
@@ -194,6 +231,25 @@ const styles = StyleSheet.create({
     marginTop: 14,
     fontSize: 15,
     color: colors.muted,
+  },
+  errorMessage: {
+    marginTop: 10,
+    color: '#B3261E',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  signInButton: {
+    alignSelf: 'flex-start',
+    marginTop: 12,
+    minHeight: 44,
+    paddingHorizontal: 16,
+    justifyContent: 'center',
+    borderRadius: 12,
+    backgroundColor: colors.purple,
+  },
+  signInButtonText: {
+    color: colors.white,
+    fontWeight: '700',
   },
   notebooksList: {
     flex: 1,
