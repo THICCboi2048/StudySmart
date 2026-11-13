@@ -1,14 +1,17 @@
 import { View, Text, StyleSheet, SafeAreaView,  Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { BottomBar, ScreenHeader, colors, HapticPressable } from '../components/StudyUI';
 import { useNotebooks } from '../context/NotebookContext';
+import { useAuthSession } from '../hooks/use-auth-session';
+import { localDateKey, recordUserActivity } from '../services/study-data';
 
 const webTextWrapStyle = { flexShrink: 1, wordBreak: 'break-word' as const };
 
 export default function FlashcardsScreen() {
   const router = useRouter();
+  const session = useAuthSession();
   const params = useLocalSearchParams();
   const { getNotebook } = useNotebooks();
 
@@ -25,6 +28,9 @@ export default function FlashcardsScreen() {
 
   const [indice, setIndice] = useState(0);
   const [verContenido, setVerContenido] = useState(false);
+  const [activityError, setActivityError] = useState('');
+  const recordedActivityKey = useRef<string | null>(null);
+  const pendingActivityKey = useRef<string | null>(null);
 
   function anterior() {
     setVerContenido(false);
@@ -34,6 +40,36 @@ export default function FlashcardsScreen() {
   function siguiente() {
     setVerContenido(false);
     setIndice((actual) => (actual + 1) % tarjetas.length);
+  }
+
+  async function voltearTarjeta() {
+    setVerContenido((value) => !value);
+
+    if (session.status !== 'signedIn' || session.user.isAnonymous) {
+      return;
+    }
+
+    const uid = session.user.uid;
+    const activityKey = `${uid}:${localDateKey(new Date())}`;
+    if (
+      recordedActivityKey.current === activityKey ||
+      pendingActivityKey.current === activityKey
+    ) {
+      return;
+    }
+
+    pendingActivityKey.current = activityKey;
+    try {
+      await recordUserActivity(uid);
+      recordedActivityKey.current = activityKey;
+      setActivityError('');
+    } catch {
+      setActivityError('No se pudo actualizar tu racha diaria.');
+    } finally {
+      if (pendingActivityKey.current === activityKey) {
+        pendingActivityKey.current = null;
+      }
+    }
   }
 
   const encabezado = (
@@ -101,7 +137,7 @@ export default function FlashcardsScreen() {
         </View>
 
         <HapticPressable
-          onPress={() => setVerContenido((v) => !v)}
+          onPress={voltearTarjeta}
           accessibilityRole="button"
           accessibilityLabel={verContenido ? 'Mostrar título' : 'Mostrar contenido'}
           style={({ pressed }) => [styles.flipButton, pressed && styles.pressed]}
@@ -111,6 +147,11 @@ export default function FlashcardsScreen() {
             {verContenido ? 'Ver título' : 'Ver contenido'}
           </Text>
         </HapticPressable>
+        {activityError ? (
+          <Text accessibilityRole="alert" style={styles.activityError}>
+            {activityError}
+          </Text>
+        ) : null}
 
         <View style={styles.arrows}>
           <HapticPressable
@@ -188,6 +229,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   flipText: { color: colors.white, fontSize: 16, fontWeight: '700' },
+  activityError: {
+    marginTop: 10,
+    color: '#B3261E',
+    fontSize: 14,
+    textAlign: 'center',
+  },
   pressed: { opacity: 0.8 },
   arrows: {
     flexDirection: 'row',
