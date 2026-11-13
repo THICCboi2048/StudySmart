@@ -1,76 +1,116 @@
 import { View, Text, StyleSheet, SafeAreaView,  Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
-import { BottomBar, ScreenHeader, colors, HapticHapticPressable } from '../components/StudyUI';
-import { useNotebooks } from '../context/NotebookContext';
+import { useEffect, useRef, useState } from 'react';
 
-const webTextWrapStyle = { flexShrink: 1, wordBreak: 'break-word' as const };
+import { BottomBar, colors } from '../components/StudyUI';
+import { useAuthSession } from '../hooks/use-auth-session';
+import {
+  getUserFlashcards,
+  recordUserActivity,
+  type Flashcard,
+} from '../services/study-data';
 
 export default function FlashcardsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { getNotebook } = useNotebooks();
 
-  const notebookId = Array.isArray(params.id) ? params.id[0] : params.id;
-  const flashcardId = Array.isArray(params.flashcardId)
-    ? params.flashcardId[0]
-    : params.flashcardId;
+  const notebookId = Array.isArray(params.notebookId)
+    ? params.notebookId[0]
+    : params.notebookId;
+  const subject = Array.isArray(params.subject)
+    ? params.subject[0]
+    : params.subject || '';
+  const title = Array.isArray(params.title)
+    ? params.title[0]
+    : params.title || '';
 
-  const notebook = getNotebook(notebookId);
-  const set = notebook?.flashcardSets.find((s) => s.id === flashcardId);
+  const [indice, setIndice] = useState<number>(0);
+  const [mostrarReverso, setMostrarReverso] = useState(false);
+  const [tarjetas, setTarjetas] = useState<Flashcard[]>([]);
+  const [loadedKey, setLoadedKey] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [activityError, setActivityError] = useState('');
+  const activityRecordedFor = useRef<string | null>(null);
+  const activityPendingFor = useRef<string | null>(null);
+  const requestKey =
+    session.status === 'signedIn' && notebookId && title
+      ? `${session.user.uid}:${notebookId}:${title}`
+      : '';
 
-  const title = set?.name ?? 'Flashcards';
-  const tarjetas = set?.cards ?? [];
+  useEffect(() => {
+    if (session.status !== 'signedIn' || !notebookId || !title) {
+      return;
+    }
 
-  const [indice, setIndice] = useState(0);
-  const [verContenido, setVerContenido] = useState(false);
+    let active = true;
+    const uid = session.user.uid;
 
-  function anterior() {
-    setVerContenido(false);
-    setIndice((actual) => (actual === 0 ? tarjetas.length - 1 : actual - 1));
-  }
-
-  function siguiente() {
-    setVerContenido(false);
-    setIndice((actual) => (actual + 1) % tarjetas.length);
-  }
-
-  const encabezado = (
-    <ScreenHeader
-      title={title}
-      titleSize={27}
-      onBack={() =>
-        router.navigate({
-          pathname: '/detalle-cuaderno',
-          params: { id: notebookId },
-        })
-      }
-    />
-  );
-
-  const barra = (
-    <View style={styles.bottom}>
-      <BottomBar
-        active="notebooks"
-        addLabel="Flashcard"
-        onAdd={() =>
-          router.push({ pathname: '/crear-flashcard', params: { id: notebookId } })
+    getUserFlashcards(uid, notebookId)
+      .then((flashcards) => {
+        if (active) {
+          setTarjetas(flashcards.filter((flashcard) => flashcard.deckTitle === title));
+          setIndice(0);
+          setMostrarReverso(false);
+          setErrorMessage('');
         }
-      />
-    </View>
-  );
+      })
+      .catch(() => {
+        if (active) {
+          setErrorMessage('No se pudieron cargar las flashcards. Inténtalo de nuevo.');
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setLoadedKey(`${uid}:${notebookId}:${title}`);
+        }
+      });
 
-  if (tarjetas.length === 0) {
-    return (
-      <SafeAreaView style={styles.safe}>
-        <View style={styles.container}>
-          {encabezado}
-          <Text style={styles.counter}>Este set no tiene tarjetas todavía</Text>
-          {barra}
-        </View>
-      </SafeAreaView>
-    );
+    return () => {
+      active = false;
+    };
+  }, [notebookId, session.status, session.user?.uid, title]);
+
+  function trackActivity(): void {
+    if (session.status !== 'signedIn' || session.user.isAnonymous) {
+      return;
+    }
+
+    const uid = session.user.uid;
+    if (
+      activityRecordedFor.current === uid ||
+      activityPendingFor.current === uid
+    ) {
+      return;
+    }
+
+    activityPendingFor.current = uid;
+    setActivityError('');
+    void recordUserActivity(uid)
+      .then(() => {
+        activityRecordedFor.current = uid;
+      })
+      .catch(() => {
+        setActivityError('No se pudo actualizar tu racha diaria.');
+      })
+      .finally(() => {
+        if (activityPendingFor.current === uid) {
+          activityPendingFor.current = null;
+        }
+      });
+  }
+
+  function anterior(): void {
+    trackActivity();
+    setIndice((actual: number) => actual === 0 ? tarjetas.length - 1 : actual - 1);
+    setMostrarReverso(false);
+  }
+
+  function siguiente(): void {
+    trackActivity();
+    setIndice((actual: number) => (actual + 1) % tarjetas.length);
+    setMostrarReverso(false);
   }
 
   const tarjeta = tarjetas[indice];
