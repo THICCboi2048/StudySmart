@@ -5,22 +5,17 @@ import {
   StyleSheet,
   SafeAreaView,
   Pressable,
+  ScrollView,
+  Modal,
 } from 'react-native';
 
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-
 import {
   BottomBar,
   colors,
 } from '../components/StudyUI';
-
-const materias: string[] = [
-  'Teatro',
-  'Matemáticas',
-  'Estudios filosofales',
-  'Cocina',
-];
+import { useNotebooks } from '../context/NotebookContext';
+import { useRouter } from 'expo-router';
 
 const iconos: React.ComponentProps<typeof Ionicons>['name'][] = [
   'color-palette-outline',
@@ -31,6 +26,23 @@ const iconos: React.ComponentProps<typeof Ionicons>['name'][] = [
 
 export default function CuadernosScreen() {
   const router = useRouter();
+  const { notebooks, deleteNotebook } = useNotebooks();
+  const [notebookToDelete, setNotebookToDelete] = useState(null);
+  const [mostrarOpcionesEliminacion, setMostrarOpcionesEliminacion] = useState(false);
+
+  function abrirCuaderno(notebook: Notebook) {
+    router.push({
+      pathname: '/detalle-cuaderno',
+      params: { id: notebook.id },
+    });
+  }
+
+  function confirmarEliminacion() {
+    if (!notebookToDelete) return;
+
+    deleteNotebook(notebookToDelete.id);
+    setNotebookToDelete(null);
+  }
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -59,25 +71,45 @@ export default function CuadernosScreen() {
           </Pressable>
         </View>
 
-        <Text style={styles.description}>
-          ¿Qué quieres estudiar hoy?
-        </Text>
+        <ScrollView
+          style={styles.notebooksList}
+          contentContainerStyle={styles.notebooksContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          {notebooks.length === 0 ? (
+            <Text style={styles.emptyState}>No hay cuadernos creados</Text>
+          ) : (notebooks.map((notebook) => (
+            <View key={notebook.id} style={styles.notebookCard}>
+              <Pressable
+                onPress={() => abrirCuaderno(notebook)}
+                accessibilityRole="button"
+                accessibilityLabel={`Abrir cuaderno ${notebook.name}`}
+                style={({ pressed }) => [
+                  styles.notebookOpen,
+                  pressed && styles.notebookCardPressed,
+                ]}
+              >
+                <Ionicons name="book-outline" size={23} color={colors.purple} />
+                <Text style={styles.notebookName}>{notebook.name}</Text>
+              </Pressable>
 
-        <View style={styles.list}>
-          {materias.map((materia, index) => (
-            <StudyButton
-              key={materia}
-              title={materia}
-              icon={iconos[index]}
-              onPress={() =>
-                router.push({
-                  pathname: '/materia',
-                  params: { subject: materia },
-                })
-              }
-            />
-          ))}
-        </View>
+              {mostrarOpcionesEliminacion && (
+                <Pressable
+                  onPress={() => setNotebookToDelete(notebook)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Eliminar cuaderno ${notebook.name}`}
+                  hitSlop={8}
+                  style={({ pressed }) => [
+                    styles.deleteButton,
+                    pressed && styles.deleteButtonPressed,
+                  ]}
+                >
+                  <Ionicons name="trash-outline" size={21} color={colors.muted} />
+                </Pressable>
+              )}
+            </View>
+          )))}
+        </ScrollView>
 
         <View style={styles.bottom}>
           <BottomBar active="notebooks" />
@@ -266,17 +298,6 @@ const styles = StyleSheet.create({
   },
   confirmationButtonPressed: {
     opacity: 0.75,
-  },
-  error: {
-    color: '#B3261E',
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  emptyText: {
-    color: colors.muted,
-    fontSize: 15,
-    lineHeight: 22,
-    marginBottom: 16,
   },
   bottom: {
     marginTop: 'auto',
