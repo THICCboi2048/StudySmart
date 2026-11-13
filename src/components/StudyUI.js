@@ -15,7 +15,8 @@ export const colors = {
 export const hapticStrong = () => {
   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
 };
-export function HapticPressable({ onPress, onPressIn, haptic = true, ...props }) {
+
+export function HapticPressable({ onPress, haptic = true, ...props }) {
   return (
     <Pressable
       {...props}
@@ -27,19 +28,18 @@ export function HapticPressable({ onPress, onPressIn, haptic = true, ...props })
   );
 }
 
-
 export function ScreenHeader({ title, subtitle, onBack, titleSize = 29 }) {
   return (
     <View>
       <View style={styles.screenHeader}>
-        <Pressable
+        <HapticPressable
           onPress={onBack}
           accessibilityRole="button"
           accessibilityLabel="Volver"
           style={styles.backButton}
         >
           <Ionicons name="arrow-back" size={24} color={colors.dark} />
-        </Pressable>
+        </HapticPressable>
         <Text
           style={[styles.screenTitle, { fontSize: titleSize }]}
           numberOfLines={1}
@@ -51,9 +51,10 @@ export function ScreenHeader({ title, subtitle, onBack, titleSize = 29 }) {
     </View>
   );
 }
+
 export function StudyButton({ title, onPress, icon }) {
   return (
-    <Pressable
+    <HapticPressable
       onPress={onPress}
       style={({ pressed }) => [
         styles.studyButton,
@@ -74,7 +75,7 @@ export function StudyButton({ title, onPress, icon }) {
         size={20}
         color={colors.muted}
       />
-    </Pressable>
+    </HapticPressable>
   );
 }
 
@@ -121,7 +122,7 @@ export function BottomBar({
   return (
     <View style={styles.bottomBar}>
       {items.map((item) => (
-        <Pressable
+        <HapticPressable
           key={item.key}
           onPress={item.action}
           accessibilityRole="button"
@@ -146,11 +147,13 @@ export function BottomBar({
             />
           </View>
           <Text style={styles.navLabel}>{item.label}</Text>
-        </Pressable>
+        </HapticPressable>
       ))}
     </View>
   );
 }
+
+// ...los styles se quedan exactamente igual
 
 const styles = StyleSheet.create({
   studyButton: {
