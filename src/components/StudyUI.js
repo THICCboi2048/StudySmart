@@ -60,11 +60,15 @@ export function StudyButton({ title, onPress, icon }) {
   );
 }
 
+/**
+ * @param {{ active?: string, showAdd?: boolean, onAdd?: () => void, addLabel?: string, addIcon?: string }} props
+ */
 export function BottomBar({
   active = 'home',
   showAdd = true,
-  onAdd,
+  onAdd = undefined,
   addLabel = 'Añadir',
+  addIcon = 'add',
 }) {
   const router = useRouter();
 
@@ -76,22 +80,22 @@ export function BottomBar({
       label: 'Inicio',
     },
     showAdd
-    ? {
-        key: 'add',
-        icon: 'add',
-        action: onAdd ?? (() => router.push('/creacion')),
-        label: addLabel,
-      }
-    : {
-        key: 'notebooks',
-        icon: 'create-outline',
-        action: () => router.push('/cuadernos'),
-        label: 'Cuadernos',
-      },
+      ? {
+          key: 'add',
+          icon: addIcon,
+          action: onAdd || (() => router.push('/creacion')),
+          label: addLabel,
+        }
+      : {
+          key: 'notebooks',
+          icon: 'create-outline',
+          action: () => router.push('/cuadernos'),
+          label: 'Cuadernos',
+        },
     {
       key: 'profile',
       icon: 'person-circle-outline',
-      action: () => {},
+      action: () => router.push('/auth'),
       label: 'Perfil',
     },
   ];

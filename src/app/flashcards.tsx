@@ -1,135 +1,252 @@
-import { View, Text, StyleSheet, SafeAreaView, Pressable, Platform } from 'react-native';
+
+import {
+  View,
+  Text,
+  StyleSheet,
+  SafeAreaView,
+  Pressable,
+  ActivityIndicator,
+} from 'react-native';
+
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
-import { BottomBar, ScreenHeader, colors } from '../components/StudyUI';
-import { useNotebooks } from '../context/NotebookContext';
+import { useEffect, useRef, useState } from 'react';
 
-const webTextWrapStyle = { flexShrink: 1, wordBreak: 'break-word' as const };
+import { BottomBar, colors } from '../components/StudyUI';
+import { useAuthSession } from '../hooks/use-auth-session';
+import {
+  getUserFlashcards,
+  recordUserActivity,
+  type Flashcard,
+} from '../services/study-data';
 
 export default function FlashcardsScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams();
-  const { getNotebook } = useNotebooks();
+  const session = useAuthSession();
+  const params = useLocalSearchParams<{
+    notebookId?: string | string[];
+    subject?: string | string[];
+    title?: string | string[];
+  }>();
 
-  const notebookId = Array.isArray(params.id) ? params.id[0] : params.id;
-  const flashcardId = Array.isArray(params.flashcardId)
-    ? params.flashcardId[0]
-    : params.flashcardId;
+  const notebookId = Array.isArray(params.notebookId)
+    ? params.notebookId[0]
+    : params.notebookId;
+  const subject = Array.isArray(params.subject)
+    ? params.subject[0]
+    : params.subject || '';
+  const title = Array.isArray(params.title)
+    ? params.title[0]
+    : params.title || '';
 
-  const notebook = getNotebook(notebookId);
-  const set = notebook?.flashcardSets.find((s) => s.id === flashcardId);
+  const [indice, setIndice] = useState<number>(0);
+  const [mostrarReverso, setMostrarReverso] = useState(false);
+  const [tarjetas, setTarjetas] = useState<Flashcard[]>([]);
+  const [loadedKey, setLoadedKey] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [activityError, setActivityError] = useState('');
+  const activityRecordedFor = useRef<string | null>(null);
+  const activityPendingFor = useRef<string | null>(null);
+  const requestKey =
+    session.status === 'signedIn' && notebookId && title
+      ? `${session.user.uid}:${notebookId}:${title}`
+      : '';
 
-  const title = set?.name ?? 'Flashcards';
-  const tarjetas = set?.cards ?? [];
+  useEffect(() => {
+    if (session.status !== 'signedIn' || !notebookId || !title) {
+      return;
+    }
 
-  const [indice, setIndice] = useState(0);
-  const [verContenido, setVerContenido] = useState(false);
+    let active = true;
+    const uid = session.user.uid;
 
-  function anterior() {
-    setVerContenido(false);
-    setIndice((actual) => (actual === 0 ? tarjetas.length - 1 : actual - 1));
-  }
-
-  function siguiente() {
-    setVerContenido(false);
-    setIndice((actual) => (actual + 1) % tarjetas.length);
-  }
-
-  const encabezado = (
-    <ScreenHeader
-      title={title}
-      titleSize={27}
-      onBack={() =>
-        router.navigate({
-          pathname: '/detalle-cuaderno',
-          params: { id: notebookId },
-        })
-      }
-    />
-  );
-
-  const barra = (
-    <View style={styles.bottom}>
-      <BottomBar
-        active="notebooks"
-        addLabel="Flashcard"
-        onAdd={() =>
-          router.push({ pathname: '/crear-flashcard', params: { id: notebookId } })
+    getUserFlashcards(uid, notebookId)
+      .then((flashcards) => {
+        if (active) {
+          setTarjetas(flashcards.filter((flashcard) => flashcard.deckTitle === title));
+          setIndice(0);
+          setMostrarReverso(false);
+          setErrorMessage('');
         }
-      />
-    </View>
-  );
+      })
+      .catch(() => {
+        if (active) {
+          setErrorMessage('No se pudieron cargar las flashcards. Inténtalo de nuevo.');
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setLoadedKey(`${uid}:${notebookId}:${title}`);
+        }
+      });
 
-  if (tarjetas.length === 0) {
-    return (
-      <SafeAreaView style={styles.safe}>
-        <View style={styles.container}>
-          {encabezado}
-          <Text style={styles.counter}>Este set no tiene tarjetas todavía</Text>
-          {barra}
-        </View>
-      </SafeAreaView>
-    );
+    return () => {
+      active = false;
+    };
+  }, [notebookId, session.status, session.user?.uid, title]);
+
+  function trackActivity(): void {
+    if (session.status !== 'signedIn' || session.user.isAnonymous) {
+      return;
+    }
+
+    const uid = session.user.uid;
+    if (
+      activityRecordedFor.current === uid ||
+      activityPendingFor.current === uid
+    ) {
+      return;
+    }
+
+    activityPendingFor.current = uid;
+    setActivityError('');
+    void recordUserActivity(uid)
+      .then(() => {
+        activityRecordedFor.current = uid;
+      })
+      .catch(() => {
+        setActivityError('No se pudo actualizar tu racha diaria.');
+      })
+      .finally(() => {
+        if (activityPendingFor.current === uid) {
+          activityPendingFor.current = null;
+        }
+      });
   }
 
-  const tarjeta = tarjetas[indice];
-  const textoVisible = verContenido ? tarjeta.content : tarjeta.title;
+  function anterior(): void {
+    trackActivity();
+    setIndice((actual: number) => actual === 0 ? tarjetas.length - 1 : actual - 1);
+    setMostrarReverso(false);
+  }
+
+  function siguiente(): void {
+    trackActivity();
+    setIndice((actual: number) => (actual + 1) % tarjetas.length);
+    setMostrarReverso(false);
+  }
+
+  const isLoading =
+    session.status === 'loading' ||
+    (session.status === 'signedIn' && requestKey !== '' && loadedKey !== requestKey);
+  const currentCard = tarjetas[indice];
 
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
-        {encabezado}
+        <Text style={styles.title}>{title || 'Flashcards'}</Text>
+        {subject ? <Text style={styles.subject}>{subject}</Text> : null}
 
-        <Text style={styles.counter}>
-          Tarjeta {indice + 1} de {tarjetas.length}
-        </Text>
-
-        <View style={styles.card}>
-          <Ionicons name="albums-outline" size={38} color={colors.purple} />
-          <Text style={styles.side}>{verContenido ? 'Contenido' : 'Título'}</Text>
-          <Text
-            style={[
-              styles.cardTitle,
-              verContenido && styles.cardContent,
-              Platform.OS === 'web' && webTextWrapStyle,
-            ]}
-          >
-            {textoVisible || '—'}
+        {!notebookId || !title ? (
+          <Text style={styles.message}>
+            Selecciona un grupo de flashcards desde uno de tus cuadernos.
           </Text>
-        </View>
-
-        <Pressable
-          onPress={() => setVerContenido((v) => !v)}
-          accessibilityRole="button"
-          accessibilityLabel={verContenido ? 'Mostrar título' : 'Mostrar contenido'}
-          style={({ pressed }) => [styles.flipButton, pressed && styles.pressed]}
-        >
-          <Ionicons name="swap-horizontal" size={20} color={colors.white} />
-          <Text style={styles.flipText}>
-            {verContenido ? 'Ver título' : 'Ver contenido'}
+        ) : session.status === 'signedOut' ? (
+          <View style={styles.messageContainer}>
+            <Text style={styles.message}>
+              Inicia sesión para ver las flashcards de tu cuenta.
+            </Text>
+            <Pressable
+              onPress={() =>
+                router.push({
+                  pathname: '/auth',
+                  params: {
+                    returnTo: 'flashcards',
+                    notebookId: notebookId || '',
+                    subject,
+                    title,
+                  },
+                })
+              }
+              accessibilityRole="button"
+              style={styles.primaryButton}
+            >
+              <Text style={styles.primaryButtonText}>Iniciar sesión</Text>
+            </Pressable>
+          </View>
+        ) : session.status === 'error' ? (
+          <Text accessibilityRole="alert" style={styles.error}>
+            {session.error}
           </Text>
-        </Pressable>
+        ) : isLoading ? (
+          <ActivityIndicator
+            size="large"
+            color={colors.purple}
+            accessibilityLabel="Cargando flashcards"
+          />
+        ) : errorMessage ? (
+          <Text accessibilityRole="alert" style={styles.error}>
+            {errorMessage}
+          </Text>
+        ) : !currentCard ? (
+          <Text style={styles.message}>Este grupo todavía no tiene flashcards.</Text>
+        ) : (
+          <>
+            <Text style={styles.counter}>
+              Tarjeta {indice + 1} de {tarjetas.length}
+            </Text>
 
-        <View style={styles.arrows}>
-          <Pressable
-            onPress={anterior}
-            style={styles.arrowButton}
-            accessibilityLabel="Tarjeta anterior"
-            accessibilityRole="button"
-          >
-            <Ionicons name="arrow-back" size={28} color={colors.purple} />
-          </Pressable>
+            <Pressable
+              onPress={() => {
+                trackActivity();
+                setMostrarReverso((visible) => !visible);
+              }}
+              style={({ pressed }) => [
+                styles.card,
+                pressed && styles.pressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={mostrarReverso ? 'Mostrar frente' : 'Mostrar reverso'}
+            >
+              <Ionicons
+                name="albums-outline"
+                size={38}
+                color={colors.purple}
+              />
 
-          <Pressable
-            onPress={siguiente}
-            style={styles.arrowButton}
-            accessibilityLabel="Tarjeta siguiente"
-            accessibilityRole="button"
-          >
-            <Ionicons name="arrow-forward" size={28} color={colors.purple} />
-          </Pressable>
-        </View>
+              <Text style={styles.cardTitle}>
+                {mostrarReverso ? currentCard.back : currentCard.front}
+              </Text>
+
+              <Text style={styles.cardHint}>
+                Pulsa para ver {mostrarReverso ? 'el frente' : 'el reverso'}
+              </Text>
+            </Pressable>
+
+            <View style={styles.arrows}>
+              <Pressable
+                onPress={anterior}
+                style={styles.arrowButton}
+                accessibilityLabel="Tarjeta anterior"
+                accessibilityRole="button"
+              >
+                <Ionicons
+                  name="arrow-back"
+                  size={28}
+                  color={colors.purple}
+                />
+              </Pressable>
+
+              <Pressable
+                onPress={siguiente}
+                style={styles.arrowButton}
+                accessibilityLabel="Tarjeta siguiente"
+                accessibilityRole="button"
+              >
+                <Ionicons
+                  name="arrow-forward"
+                  size={28}
+                  color={colors.purple}
+                />
+              </Pressable>
+            </View>
+          </>
+        )}
+        {activityError ? (
+          <Text accessibilityRole="alert" style={styles.error}>
+            {activityError}
+          </Text>
+        ) : null}
 
         {barra}
       </View>
@@ -138,9 +255,30 @@ export default function FlashcardsScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  container: { flex: 1, paddingHorizontal: 24, paddingTop: 24 },
-  counter: { fontSize: 14, color: colors.muted, marginTop: 12 },
+  safe: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  container: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+  },
+  title: {
+    fontSize: 27,
+    fontWeight: '800',
+    color: colors.dark,
+  },
+  subject: {
+    fontSize: 14,
+    color: colors.muted,
+    marginTop: 6,
+  },
+  counter: {
+    fontSize: 14,
+    color: colors.muted,
+    marginTop: 12,
+  },
   card: {
     marginTop: 34,
     minHeight: 250,
@@ -186,8 +324,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  flipText: { color: colors.white, fontSize: 16, fontWeight: '700' },
-  pressed: { opacity: 0.8 },
+  pressed: {
+    opacity: 0.8,
+  },
+  messageContainer: {
+    marginTop: 28,
+  },
+  message: {
+    color: colors.muted,
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  error: {
+    color: '#B3261E',
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 20,
+  },
+  primaryButton: {
+    minHeight: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.purple,
+    borderRadius: 15,
+    marginTop: 18,
+  },
+  primaryButtonText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: '700',
+  },
   arrows: {
     flexDirection: 'row',
     justifyContent: 'space-between',
