@@ -15,12 +15,16 @@ import {
   StudyButton,
   colors,
 } from '../components/StudyUI';
+import { useNotebooks } from '../context/NotebookContext';
 import { useAuthSession } from '../hooks/use-auth-session';
 import { getUserFlashcards, recordUserActivity } from '../services/study-data';
+
+type DeckSummary = { id: string; title: string };
 
 export default function MateriaScreen() {
   const router = useRouter();
   const session = useAuthSession();
+  const { getNotebook } = useNotebooks();
 
   const params = useLocalSearchParams<{
     notebookId?: string | string[];
@@ -33,9 +37,11 @@ export default function MateriaScreen() {
   const subject = Array.isArray(params.subject)
     ? params.subject[0]
     : params.subject || 'Teatro';
+  const notebook = getNotebook(notebookId);
+  const notes = notebook?.notes ?? [];
 
-  const [deckTitles, setDeckTitles] = useState<string[]>([]);
-  const [loadedUid, setLoadedUid] = useState('');
+  const [decks, setDecks] = useState<DeckSummary[]>([]);
+  const [loadedKey, setLoadedKey] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [activityError, setActivityError] = useState('');
 
@@ -46,11 +52,19 @@ export default function MateriaScreen() {
 
     let active = true;
     const uid = session.user.uid;
+    const requestKey = `${uid}:${notebookId}`;
 
     getUserFlashcards(uid, notebookId)
       .then((flashcards) => {
         if (active) {
-          setDeckTitles([...new Set(flashcards.map((flashcard) => flashcard.deckTitle))]);
+          const decksById = new Map<string, DeckSummary>();
+          flashcards.forEach((flashcard) => {
+            decksById.set(flashcard.deckId, {
+              id: flashcard.deckId,
+              title: flashcard.deckTitle,
+            });
+          });
+          setDecks([...decksById.values()]);
           setErrorMessage('');
           setActivityError('');
           if (!session.user.isAnonymous) {
@@ -69,7 +83,7 @@ export default function MateriaScreen() {
       })
       .finally(() => {
         if (active) {
-          setLoadedUid(uid);
+          setLoadedKey(requestKey);
         }
       });
 
@@ -80,7 +94,8 @@ export default function MateriaScreen() {
 
   const isLoading =
     session.status === 'loading' ||
-    (session.status === 'signedIn' && loadedUid !== session.user.uid);
+    (session.status === 'signedIn' &&
+      loadedKey !== `${session.user.uid}:${notebookId ?? ''}`);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -138,27 +153,27 @@ export default function MateriaScreen() {
               onPress={() =>
                 router.push({
                   pathname: '/crear-flashcard',
-                  params: { notebookId },
+                  params: { id: notebookId },
                 })
               }
             />
-            {deckTitles.length === 0 ? (
+            {decks.length === 0 ? (
               <Text style={styles.message}>
                 Aún no hay flashcards en este cuaderno.
               </Text>
             ) : (
-              deckTitles.map((title) => (
+              decks.map((deck) => (
                 <StudyButton
-                  key={title}
-                  title={title}
+                  key={deck.id}
+                  title={deck.title}
                   icon="albums-outline"
                   onPress={() =>
                     router.push({
                       pathname: '/flashcards',
                       params: {
-                        notebookId,
+                        id: notebookId,
+                        flashcardId: deck.id,
                         subject,
-                        title,
                       },
                     })
                   }
@@ -177,11 +192,23 @@ export default function MateriaScreen() {
           NOTAS
         </Text>
 
-        <StudyButton
-          title="Vestuario para el 27"
-          icon="document-text-outline"
-          onPress={() => { }}
-        />
+        {session.status === 'signedIn' && notes.length > 0 ? (
+          notes.map((note) => (
+            <StudyButton
+              key={note.id}
+              title={note.name}
+              icon="document-text-outline"
+              onPress={() =>
+                router.push({
+                  pathname: '/detalle-cuaderno',
+                  params: { id: notebookId },
+                })
+              }
+            />
+          ))
+        ) : (
+          <Text style={styles.message}>Aún no hay notas en este cuaderno.</Text>
+        )}
 
         <View style={styles.bottom}>
           <BottomBar active="notebooks" />

@@ -2,7 +2,7 @@ import { View, Text, StyleSheet, SafeAreaView,  Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { BottomBar, ScreenHeader, colors, HapticHapticPressable } from '../components/StudyUI';
+import { BottomBar, ScreenHeader, colors, HapticPressable } from '../components/StudyUI';
 import { useNotebooks } from '../context/NotebookContext';
 
 const webTextWrapStyle = { flexShrink: 1, wordBreak: 'break-word' as const };
@@ -40,6 +40,7 @@ export default function FlashcardsScreen() {
     <ScreenHeader
       title={title}
       titleSize={27}
+      subtitle=""
       onBack={() =>
         router.navigate({
           pathname: '/detalle-cuaderno',

@@ -2,12 +2,21 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // users/{uid}: uid (string), createdAt (timestamp).
-    // users/{uid}/notebooks/{id}: uid, name (1-80 chars), createdAt and updatedAt.
-    // users/{uid}/flashcards/{id}: uid, notebookId, deckTitle (1-100 chars),
-    // front and back (1-2000 chars), createdAt and updatedAt.
-    // users/{uid}/activityDays/{YYYY-MM-DD}: dateKey and createdAt.
-    // users/{uid}/streak/current: currentStreak, lastActivityDate and updatedAt.
+    // Data model (all fields required unless noted):
+    // users/{uid}: uid string (immutable, equals uid), createdAt timestamp.
+    // users/{uid}/notebooks/{id}: uid string (immutable), name string (1-80),
+    // createdAt timestamp (immutable), updatedAt timestamp.
+    // users/{uid}/flashcards/{id}: uid string (immutable), notebookId string
+    // (1-128, immutable), deckId string (1-128, immutable), deckTitle string
+    // (1-100), front/back strings (1-2000), createdAt timestamp (immutable),
+    // updatedAt timestamp.
+    // users/{uid}/notes/{id}: uid string (immutable), notebookId string
+    // (1-128, immutable), name string (1-100), content string (0-10000),
+    // createdAt timestamp (immutable), updatedAt timestamp.
+    // users/{uid}/activityDays/{YYYY-MM-DD}: dateKey string (immutable,
+    // YYYY-MM-DD), createdAt timestamp.
+    // users/{uid}/streak/current: currentStreak integer (1-36500),
+    // lastActivityDate string (YYYY-MM-DD), updatedAt timestamp.
 
     function isAuthenticated() {
       return request.auth != null;
@@ -86,6 +95,7 @@ service cloud.firestore {
           [
             'uid',
             'notebookId',
+            'deckId',
             'deckTitle',
             'front',
             'back',
@@ -98,6 +108,7 @@ service cloud.firestore {
           [
             'uid',
             'notebookId',
+            'deckId',
             'deckTitle',
             'front',
             'back',
@@ -108,9 +119,29 @@ service cloud.firestore {
         data.uid is string &&
         data.uid == userId &&
         validString(data, 'notebookId', 1, 128) &&
+        validString(data, 'deckId', 1, 128) &&
         validString(data, 'deckTitle', 1, 100) &&
         validString(data, 'front', 1, 2000) &&
         validString(data, 'back', 1, 2000) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidNote(data, userId) {
+      return hasRequiredFields(
+          data,
+          ['uid', 'notebookId', 'name', 'content', 'createdAt', 'updatedAt']
+        ) &&
+        hasOnlyAllowedFields(
+          data,
+          ['uid', 'notebookId', 'name', 'content', 'createdAt', 'updatedAt']
+        ) &&
+        data.uid is string &&
+        data.uid == userId &&
+        validString(data, 'notebookId', 1, 128) &&
+        validString(data, 'name', 1, 100) &&
+        data.content is string &&
+        data.content.size() <= 10000 &&
         data.createdAt is timestamp &&
         data.updatedAt is timestamp;
     }
@@ -193,8 +224,7 @@ service cloud.firestore {
       match /flashcards/{flashcardId} {
         allow read: if isOwner(userId) &&
           hasUserProfile(userId) &&
-          isDocOwner() &&
-          ownsNotebook(userId, resource.data.notebookId);
+          isDocOwner();
         allow create: if isOwner(userId) &&
           hasUserProfile(userId) &&
           uidUnchanged() &&
@@ -209,9 +239,38 @@ service cloud.firestore {
           isValidFlashcard(request.resource.data, userId) &&
           ownsNotebook(userId, request.resource.data.notebookId) &&
           request.resource.data.notebookId == resource.data.notebookId &&
+          request.resource.data.deckId == resource.data.deckId &&
           request.resource.data.createdAt == resource.data.createdAt &&
           request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['deckTitle', 'front', 'back', 'updatedAt']) &&
+          request.resource.data.updatedAt == request.time;
+        allow delete: if isOwner(userId) &&
+          hasUserProfile(userId) &&
+          isDocOwner() &&
+          ownsNotebook(userId, resource.data.notebookId);
+      }
+
+      match /notes/{noteId} {
+        allow read: if isOwner(userId) &&
+          hasUserProfile(userId) &&
+          isDocOwner();
+        allow create: if isOwner(userId) &&
+          hasUserProfile(userId) &&
+          uidUnchanged() &&
+          isValidNote(request.resource.data, userId) &&
+          ownsNotebook(userId, request.resource.data.notebookId) &&
+          request.resource.data.createdAt == request.time &&
+          request.resource.data.updatedAt == request.time;
+        allow update: if isOwner(userId) &&
+          hasUserProfile(userId) &&
+          isDocOwner() &&
+          uidNotModified() &&
+          isValidNote(request.resource.data, userId) &&
+          ownsNotebook(userId, request.resource.data.notebookId) &&
+          request.resource.data.notebookId == resource.data.notebookId &&
+          request.resource.data.createdAt == resource.data.createdAt &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['name', 'content', 'updatedAt']) &&
           request.resource.data.updatedAt == request.time;
         allow delete: if isOwner(userId) &&
           hasUserProfile(userId) &&

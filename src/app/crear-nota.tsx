@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
     SafeAreaView,
     ScrollView,
@@ -16,16 +16,40 @@ import {
 } from '../constants/textLimits';
 
 export default function CrearNotaScreen() {
-    const router = useRouter();
     const params = useLocalSearchParams();
-    const { addNote, getNotebook, updateNote } = useNotebooks();
-
     const notebookId = Array.isArray(params.id) ? params.id[0] : params.id;
     const noteId = Array.isArray(params.noteId) ? params.noteId[0] : params.noteId;
+
+    return (
+        <CrearNotaForm
+            key={`${notebookId ?? ''}:${noteId ?? 'new'}`}
+            notebookId={notebookId}
+            noteId={noteId}
+        />
+    );
+}
+
+function CrearNotaForm({
+    notebookId,
+    noteId,
+}: {
+    notebookId?: string;
+    noteId?: string;
+}) {
+    const router = useRouter();
+    const {
+        addNote,
+        getNotebook,
+        updateNote,
+        error,
+        clearError,
+    } = useNotebooks();
+
     const notebook = getNotebook(notebookId);
     const note = notebook?.notes.find((item) => item.id === noteId);
     const [titulo, setTitulo] = useState(note?.name ?? '');
     const [contenido, setContenido] = useState(note?.content ?? '');
+    const [saving, setSaving] = useState(false);
     const isEditing = !!noteId;
 
     const puedeGuardar =
@@ -33,20 +57,23 @@ export default function CrearNotaScreen() {
         !!notebook &&
         (!isEditing || !!note);
 
-    useEffect(() => {
-        setTitulo(note?.name ?? '');
-        setContenido(note?.content ?? '');
-    }, [noteId, note?.name, note?.content]);
+    async function guardarNota() {
+        if (!puedeGuardar || !notebookId || saving) return;
 
-    function guardarNota() {
-        if (!puedeGuardar || !notebookId) return;
-
-        if (noteId) {
-            updateNote(notebookId, noteId, titulo.trim(), contenido.trim());
-        } else {
-            addNote(notebookId, titulo.trim(), contenido.trim());
+        clearError();
+        setSaving(true);
+        try {
+            if (noteId) {
+                await updateNote(notebookId, noteId, titulo.trim(), contenido.trim());
+            } else {
+                await addNote(notebookId, titulo.trim(), contenido.trim());
+            }
+            router.dismissTo({ pathname: '/detalle-cuaderno', params: { id: notebookId } });
+        } catch {
+            // The context exposes the error to the screen.
+        } finally {
+            setSaving(false);
         }
-        router.dismissTo({ pathname: '/detalle-cuaderno', params: { id: notebookId } });
     }
 
     return (
@@ -70,6 +97,9 @@ export default function CrearNotaScreen() {
                                 : 'No se encontró el cuaderno. Vuelve a la lista e inténtalo de nuevo.'}
                         </Text>
                     )}
+                    {error ? (
+                        <Text accessibilityRole="alert" style={styles.errorMessage}>{error}</Text>
+                    ) : null}
 
                     <Text style={styles.label}>Título</Text>
                     <TextInput
@@ -98,13 +128,13 @@ export default function CrearNotaScreen() {
 
                     <HapticPressable
                         onPress={guardarNota}
-                        disabled={!puedeGuardar}
+                        disabled={!puedeGuardar || saving}
                         accessibilityRole="button"
                         accessibilityLabel={isEditing ? 'Guardar cambios de la nota' : 'Guardar nota'}
                         accessibilityState={{ disabled: !puedeGuardar }}
                         style={({ pressed }) => [
                             styles.saveButton,
-                            !puedeGuardar && styles.saveButtonDisabled,
+                            (!puedeGuardar || saving) && styles.saveButtonDisabled,
                             pressed && styles.pressed,
                         ]}
                     >

@@ -14,14 +14,23 @@ import { MAX_TITLE_LENGTH } from '../constants/textLimits';
 export default function CreacionScreen() {
   const [nombreCuaderno, setNombreCuaderno] = useState('');
   const router = useRouter();
-  const { addNotebook } = useNotebooks();
+  const { addNotebook, error, clearError } = useNotebooks();
+  const [saving, setSaving] = useState(false);
 
-  function crearCuaderno() {
+  async function crearCuaderno() {
     const nombre = nombreCuaderno.trim();
-    if (!nombre) return;
+    if (!nombre || saving) return;
 
-    addNotebook(nombre);
-    router.replace('/cuadernos');
+    clearError();
+    setSaving(true);
+    try {
+      await addNotebook(nombre);
+      router.replace('/cuadernos');
+    } catch {
+      // The context exposes the error to the screen.
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -33,7 +42,10 @@ export default function CreacionScreen() {
           <Text style={styles.label}>Nombre del cuaderno</Text>
           <TextInput
             value={nombreCuaderno}
-            onChangeText={setNombreCuaderno}
+            onChangeText={(value) => {
+              clearError();
+              setNombreCuaderno(value);
+            }}
             maxLength={MAX_TITLE_LENGTH}
             placeholder="Escribe el nombre"
             placeholderTextColor={colors.muted}
@@ -42,14 +54,19 @@ export default function CreacionScreen() {
             style={styles.input}
             accessibilityLabel="Nombre del cuaderno"
           />
+          {error ? (
+            <Text accessibilityRole="alert" style={styles.errorMessage}>
+              {error}
+            </Text>
+          ) : null}
           <HapticPressable
             onPress={crearCuaderno}
-            disabled={!nombreCuaderno.trim()}
+            disabled={!nombreCuaderno.trim() || saving}
             accessibilityRole="button"
             accessibilityLabel="Crear cuaderno"
             style={({ pressed }) => [
               styles.createButton,
-              !nombreCuaderno.trim() && styles.createButtonDisabled,
+              (!nombreCuaderno.trim() || saving) && styles.createButtonDisabled,
               pressed && styles.createButtonPressed,
             ]}
           >
@@ -113,6 +130,12 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 16,
     fontWeight: '700',
+  },
+  errorMessage: {
+    marginTop: 12,
+    color: '#B3261E',
+    fontSize: 14,
+    lineHeight: 20,
   },
   bottom: {
     marginTop: 'auto',
