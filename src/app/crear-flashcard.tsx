@@ -4,13 +4,12 @@ import {
     StyleSheet,
     Text,
     TextInput,
-    Pressable,
     ScrollView,
     View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { BottomBar, ScreenHeader, colors } from '../components/StudyUI';
+import { BottomBar, ScreenHeader, colors, HapticPressable } from '../components/StudyUI';
 import { FlashcardInput, useNotebooks } from '../context/NotebookContext';
 import {
     MAX_FLASHCARD_CONTENT_LENGTH,
@@ -141,14 +140,14 @@ export default function CrearFlashcardScreen() {
                             <View style={styles.cardHeader}>
                                 <Text style={styles.cardNumber}>Tarjeta {i + 1}</Text>
                                 {borradores.length > 1 && (
-                                    <Pressable
+                                    <HapticPressable
                                         onPress={() => quitarTarjeta(b.key)}
                                         accessibilityRole="button"
                                         accessibilityLabel={`Quitar tarjeta ${i + 1}`}
                                         hitSlop={8}
                                     >
                                         <Ionicons name="close" size={22} color={colors.muted} />
-                                    </Pressable>
+                                    </HapticPressable>
                                 )}
                             </View>
                             <TextInput
@@ -174,16 +173,16 @@ export default function CrearFlashcardScreen() {
                         </View>
                     ))}
 
-                    <Pressable
+                    <HapticPressable
                         onPress={agregarTarjeta}
                         accessibilityRole="button"
                         accessibilityLabel="Añadir otra tarjeta"
                         style={({ pressed }) => [styles.addCard, pressed && styles.pressed]}
                     >
                         <Ionicons name="add" size={26} color={colors.purple} />
-                    </Pressable>
+                    </HapticPressable>
 
-                    <Pressable
+                    <HapticPressable
                         onPress={guardarFlashcard}
                         disabled={!puedeCrear}
                         accessibilityRole="button"
@@ -199,7 +198,7 @@ export default function CrearFlashcardScreen() {
                         <Text style={styles.createButtonText}>
                             {isEditing ? 'Guardar cambios' : 'Crear flashcard'}
                         </Text>
-                    </Pressable>
+                    </HapticPressable>
                 </ScrollView>
 
                 <View style={styles.bottom}>

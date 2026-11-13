@@ -3,13 +3,12 @@ import {
     Text,
     StyleSheet,
     SafeAreaView,
-    Pressable,
     ScrollView,
     Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { BottomBar, colors } from '../components/StudyUI';
+import { BottomBar, colors, HapticPressable } from '../components/StudyUI';
 import { useState } from 'react';
 
 // TODO: reemplazar por los datos reales (contexto / storage)
@@ -93,16 +92,16 @@ export default function DetalleCuadernoScreen() {
         <SafeAreaView style={styles.safe}>
             <View style={styles.container}>
                 <View style={styles.header}>
-                    <Pressable
+                    <HapticPressable
                         onPress={() => router.navigate('/cuadernos')}
                         accessibilityRole="button"
                         accessibilityLabel="Volver"
                         style={styles.backButton}
                     >
                         <Ionicons name="arrow-back" size={24} color={colors.dark} />
-                    </Pressable>
+                    </HapticPressable>
                     <Text style={styles.title} numberOfLines={1}>{title}</Text>
-                    <Pressable
+                    <HapticPressable
                         onPress={() => setShowDeleteOptions((visible) => !visible)}
                         accessibilityRole="button"
                         accessibilityLabel={
@@ -120,7 +119,7 @@ export default function DetalleCuadernoScreen() {
                             size={25}
                             color={showDeleteOptions ? colors.dark : colors.muted}
                         />
-                    </Pressable>
+                    </HapticPressable>
                 </View>
 
                 <ScrollView
@@ -134,7 +133,7 @@ export default function DetalleCuadernoScreen() {
                     ) : (
                         flashcards.map((flashcard) => (
                             <View key={flashcard.id} style={styles.itemRow}>
-                                <Pressable
+                                <HapticPressable
                                     onPress={() =>
                                         showDeleteOptions
                                             ? editarFlashcard(flashcard)
@@ -157,9 +156,9 @@ export default function DetalleCuadernoScreen() {
                                     {!showDeleteOptions && (
                                         <Ionicons name="chevron-forward" size={20} color={colors.muted} />
                                     )}
-                                </Pressable>
+                                </HapticPressable>
                                 {showDeleteOptions && (
-                                    <Pressable
+                                    <HapticPressable
                                         onPress={() => setItemToDelete({
                                             type: 'flashcard',
                                             id: flashcard.id,
@@ -174,7 +173,7 @@ export default function DetalleCuadernoScreen() {
                                         ]}
                                     >
                                         <Ionicons name="trash-outline" size={21} color={colors.muted} />
-                                    </Pressable>
+                                    </HapticPressable>
                                 )}
                             </View>
                         ))
@@ -187,7 +186,7 @@ export default function DetalleCuadernoScreen() {
                     ) : (
                         notas.map((nota) => (
                             <View key={nota.id} style={styles.itemRow}>
-                                <Pressable
+                                <HapticPressable
                                     onPress={() => abrirNota(nota)}
                                     accessibilityRole="button"
                                     accessibilityLabel={
@@ -206,9 +205,9 @@ export default function DetalleCuadernoScreen() {
                                     {!showDeleteOptions && (
                                         <Ionicons name="chevron-forward" size={20} color={colors.muted} />
                                     )}
-                                </Pressable>
+                                </HapticPressable>
                                 {showDeleteOptions && (
-                                    <Pressable
+                                    <HapticPressable
                                         onPress={() => setItemToDelete({
                                             type: 'note',
                                             id: nota.id,
@@ -223,7 +222,7 @@ export default function DetalleCuadernoScreen() {
                                         ]}
                                     >
                                         <Ionicons name="trash-outline" size={21} color={colors.muted} />
-                                    </Pressable>
+                                    </HapticPressable>
                                 )}
                             </View>
                         ))
@@ -252,7 +251,7 @@ export default function DetalleCuadernoScreen() {
                             Elige el tipo de contenido para este cuaderno.
                         </Text>
 
-                        <Pressable
+                        <HapticPressable
                             onPress={crearNota}
                             accessibilityRole="button"
                             accessibilityLabel="Crear nota"
@@ -264,9 +263,9 @@ export default function DetalleCuadernoScreen() {
                             <Ionicons name="document-text-outline" size={23} color={colors.purple} />
                             <Text style={styles.createOptionTitle}>Crear nota</Text>
                             <Ionicons name="chevron-forward" size={20} color={colors.muted} />
-                        </Pressable>
+                        </HapticPressable>
 
-                        <Pressable
+                        <HapticPressable
                             onPress={crearFlashcards}
                             accessibilityRole="button"
                             accessibilityLabel="Crear flashcards"
@@ -278,9 +277,9 @@ export default function DetalleCuadernoScreen() {
                             <Ionicons name="albums-outline" size={23} color={colors.purple} />
                             <Text style={styles.createOptionTitle}>Crear flashcards</Text>
                             <Ionicons name="chevron-forward" size={20} color={colors.muted} />
-                        </Pressable>
+                        </HapticPressable>
 
-                        <Pressable
+                        <HapticPressable
                             onPress={() => setCreateModalVisible(false)}
                             accessibilityRole="button"
                             accessibilityLabel="Cerrar"
@@ -290,7 +289,7 @@ export default function DetalleCuadernoScreen() {
                             ]}
                         >
                             <Text style={styles.closeButtonText}>Cancelar</Text>
-                        </Pressable>
+                        </HapticPressable>
                     </View>
                 </View>
             </Modal>
@@ -312,7 +311,7 @@ export default function DetalleCuadernoScreen() {
                                 {selectedNote?.content || 'Esta nota no tiene contenido.'}
                             </Text>
                         </ScrollView>
-                        <Pressable
+                        <HapticPressable
                             onPress={() => setSelectedNote(null)}
                             accessibilityRole="button"
                             accessibilityLabel="Cerrar nota"
@@ -322,7 +321,7 @@ export default function DetalleCuadernoScreen() {
                             ]}
                         >
                             <Text style={styles.closeButtonText}>Cerrar</Text>
-                        </Pressable>
+                        </HapticPressable>
                     </View>
                 </View>
             </Modal>
@@ -342,7 +341,7 @@ export default function DetalleCuadernoScreen() {
                             ¿Quieres eliminar "{itemToDelete?.name}"?
                         </Text>
                         <View style={styles.confirmationActions}>
-                            <Pressable
+                            <HapticPressable
                                 onPress={() => setItemToDelete(null)}
                                 accessibilityRole="button"
                                 accessibilityLabel="Cancelar eliminación"
@@ -352,8 +351,8 @@ export default function DetalleCuadernoScreen() {
                                 ]}
                             >
                                 <Text style={styles.closeButtonText}>Cancelar</Text>
-                            </Pressable>
-                            <Pressable
+                            </HapticPressable>
+                            <HapticPressable
                                 onPress={confirmarEliminacion}
                                 accessibilityRole="button"
                                 accessibilityLabel="Confirmar eliminación"
@@ -363,7 +362,7 @@ export default function DetalleCuadernoScreen() {
                                 ]}
                             >
                                 <Text style={styles.confirmButtonText}>Eliminar</Text>
-                            </Pressable>
+                            </HapticPressable>
                         </View>
                     </View>
                 </View>

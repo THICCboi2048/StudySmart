@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   SafeAreaView,
-  Pressable,
   ScrollView,
   Modal,
 } from 'react-native';
@@ -13,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import {
   BottomBar,
   colors,
+  HapticPressable,
 } from '../components/StudyUI';
 import { useNotebooks } from '../context/NotebookContext';
 import { useRouter } from 'expo-router';
@@ -50,7 +50,7 @@ export default function CuadernosScreen() {
         <View style={styles.header}>
           <Text style={styles.title}>Cuadernos</Text>
 
-          <Pressable
+          <HapticPressable
             onPress={() => setMostrarOpcionesEliminacion((visible) => !visible)}
             accessibilityLabel={
               mostrarOpcionesEliminacion
@@ -68,7 +68,7 @@ export default function CuadernosScreen() {
               size={25}
               color={mostrarOpcionesEliminacion ? colors.dark : colors.muted}
             />
-          </Pressable>
+          </HapticPressable>
         </View>
 
         <ScrollView
@@ -80,7 +80,7 @@ export default function CuadernosScreen() {
             <Text style={styles.emptyState}>No hay cuadernos creados</Text>
           ) : (notebooks.map((notebook) => (
             <View key={notebook.id} style={styles.notebookCard}>
-              <Pressable
+              <HapticPressable
                 onPress={() => abrirCuaderno(notebook)}
                 accessibilityRole="button"
                 accessibilityLabel={`Abrir cuaderno ${notebook.name}`}
@@ -91,10 +91,10 @@ export default function CuadernosScreen() {
               >
                 <Ionicons name="book-outline" size={23} color={colors.purple} />
                 <Text style={styles.notebookName}>{notebook.name}</Text>
-              </Pressable>
+              </HapticPressable>
 
               {mostrarOpcionesEliminacion && (
-                <Pressable
+                <HapticPressable
                   onPress={() => setNotebookToDelete(notebook)}
                   accessibilityRole="button"
                   accessibilityLabel={`Eliminar cuaderno ${notebook.name}`}
@@ -105,7 +105,7 @@ export default function CuadernosScreen() {
                   ]}
                 >
                   <Ionicons name="trash-outline" size={21} color={colors.muted} />
-                </Pressable>
+                </HapticPressable>
               )}
             </View>
           )))}
@@ -129,7 +129,7 @@ export default function CuadernosScreen() {
               ¿Quieres eliminar "{notebookToDelete?.name}"?
             </Text>
             <View style={styles.confirmationActions}>
-              <Pressable
+              <HapticPressable
                 onPress={() => setNotebookToDelete(null)}
                 accessibilityRole="button"
                 accessibilityLabel="Cancelar eliminación"
@@ -139,8 +139,8 @@ export default function CuadernosScreen() {
                 ]}
               >
                 <Text style={styles.cancelButtonText}>Cancelar</Text>
-              </Pressable>
-              <Pressable
+              </HapticPressable>
+              <HapticPressable
                 onPress={confirmarEliminacion}
                 accessibilityRole="button"
                 accessibilityLabel="Confirmar eliminación"
@@ -150,7 +150,7 @@ export default function CuadernosScreen() {
                 ]}
               >
                 <Text style={styles.confirmButtonText}>Eliminar</Text>
-              </Pressable>
+              </HapticPressable>
             </View>
           </View>
         </View>

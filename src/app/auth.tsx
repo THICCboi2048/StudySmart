@@ -10,7 +10,6 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -20,7 +19,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-import { colors } from '../components/StudyUI';
+import { colors, HapticPressable } from '../components/StudyUI';
 import { getFirebaseAuth } from '../services/firebaseAuth';
 import { isFirebaseConfigured } from '../services/firebase';
 import { useAuthSession } from '../hooks/use-auth-session';
@@ -166,7 +165,7 @@ export default function AuthScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.content}>
-            <Pressable
+            <HapticPressable
               onPress={() => router.replace('/')}
               accessibilityRole="button"
               accessibilityLabel="Volver al inicio"
@@ -174,7 +173,7 @@ export default function AuthScreen() {
             >
               <Ionicons name="arrow-back" size={22} color={colors.dark} />
               <Text style={styles.backText}>Inicio</Text>
-            </Pressable>
+            </HapticPressable>
 
             <View style={styles.brand}>
               <View style={styles.brandIcon}>
@@ -211,14 +210,14 @@ export default function AuthScreen() {
                     {errorMessage || session.error}
                   </Text>
                 ) : null}
-                <Pressable
+                <HapticPressable
                   onPress={() => router.replace('/')}
                   accessibilityRole="button"
                   style={styles.primaryButton}
                 >
                   <Text style={styles.primaryButtonText}>Ir a estudiar</Text>
-                </Pressable>
-                <Pressable
+                </HapticPressable>
+                <HapticPressable
                   onPress={logOut}
                   disabled={isSubmitting}
                   accessibilityRole="button"
@@ -229,12 +228,12 @@ export default function AuthScreen() {
                   ) : (
                     <Text style={styles.secondaryButtonText}>Cerrar sesión</Text>
                   )}
-                </Pressable>
+                </HapticPressable>
               </View>
             ) : (
               <View style={styles.card}>
                 <View style={styles.modeSwitch}>
-                  <Pressable
+                  <HapticPressable
                     onPress={() => changeMode('login')}
                     accessibilityRole="tab"
                     accessibilityState={{ selected: mode === 'login' }}
@@ -243,8 +242,8 @@ export default function AuthScreen() {
                     <Text style={[styles.modeText, mode === 'login' && styles.modeTextActive]}>
                       Iniciar sesión
                     </Text>
-                  </Pressable>
-                  <Pressable
+                  </HapticPressable>
+                  <HapticPressable
                     onPress={() => changeMode('register')}
                     accessibilityRole="tab"
                     accessibilityState={{ selected: mode === 'register' }}
@@ -253,7 +252,7 @@ export default function AuthScreen() {
                     <Text style={[styles.modeText, mode === 'register' && styles.modeTextActive]}>
                       Registro
                     </Text>
-                  </Pressable>
+                  </HapticPressable>
                 </View>
 
                 <Text style={styles.label}>Correo electrónico</Text>
@@ -325,7 +324,7 @@ export default function AuthScreen() {
                   </View>
                 )}
 
-                <Pressable
+                <HapticPressable
                   onPress={submitAuthForm}
                   disabled={isSubmitting || !isFirebaseConfigured}
                   accessibilityRole="button"
@@ -342,7 +341,7 @@ export default function AuthScreen() {
                       {mode === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}
                     </Text>
                   )}
-                </Pressable>
+                </HapticPressable>
               </View>
             )}
           </View>

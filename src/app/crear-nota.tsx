@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import {
-    Pressable,
     SafeAreaView,
     ScrollView,
     StyleSheet,
@@ -9,7 +8,7 @@ import {
     View,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { BottomBar, ScreenHeader, colors } from '../components/StudyUI';
+import { BottomBar, ScreenHeader, colors,HapticPressable } from '../components/StudyUI';
 import { useNotebooks } from '../context/NotebookContext';
 import {
     MAX_NOTE_CONTENT_LENGTH,
@@ -97,7 +96,7 @@ export default function CrearNotaScreen() {
                         accessibilityLabel="Contenido de la nota"
                     />
 
-                    <Pressable
+                    <HapticPressable
                         onPress={guardarNota}
                         disabled={!puedeGuardar}
                         accessibilityRole="button"
@@ -112,7 +111,7 @@ export default function CrearNotaScreen() {
                         <Text style={styles.saveButtonText}>
                             {isEditing ? 'Guardar cambios' : 'Guardar nota'}
                         </Text>
-                    </Pressable>
+                    </HapticPressable>
                 </ScrollView>
 
                 <View style={styles.bottom}>

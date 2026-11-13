@@ -1,8 +1,8 @@
-import { View, Text, StyleSheet, SafeAreaView, Pressable, Platform } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView,  Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { BottomBar, ScreenHeader, colors } from '../components/StudyUI';
+import { BottomBar, ScreenHeader, colors, HapticHapticPressable } from '../components/StudyUI';
 import { useNotebooks } from '../context/NotebookContext';
 
 const webTextWrapStyle = { flexShrink: 1, wordBreak: 'break-word' as const };
@@ -99,7 +99,7 @@ export default function FlashcardsScreen() {
           </Text>
         </View>
 
-        <Pressable
+        <HapticPressable
           onPress={() => setVerContenido((v) => !v)}
           accessibilityRole="button"
           accessibilityLabel={verContenido ? 'Mostrar título' : 'Mostrar contenido'}
@@ -109,26 +109,26 @@ export default function FlashcardsScreen() {
           <Text style={styles.flipText}>
             {verContenido ? 'Ver título' : 'Ver contenido'}
           </Text>
-        </Pressable>
+        </HapticPressable>
 
         <View style={styles.arrows}>
-          <Pressable
+          <HapticPressable
             onPress={anterior}
             style={styles.arrowButton}
             accessibilityLabel="Tarjeta anterior"
             accessibilityRole="button"
           >
             <Ionicons name="arrow-back" size={28} color={colors.purple} />
-          </Pressable>
+          </HapticPressable>
 
-          <Pressable
+          <HapticPressable
             onPress={siguiente}
             style={styles.arrowButton}
             accessibilityLabel="Tarjeta siguiente"
             accessibilityRole="button"
           >
             <Ionicons name="arrow-forward" size={28} color={colors.purple} />
-          </Pressable>
+          </HapticPressable>
         </View>
 
         {barra}

@@ -4,11 +4,10 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  Pressable,
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { BottomBar, ScreenHeader, colors } from '../components/StudyUI';
+import { BottomBar, ScreenHeader, colors, HapticPressable } from '../components/StudyUI';
 import { useNotebooks } from '../context/NotebookContext';
 import { MAX_TITLE_LENGTH } from '../constants/textLimits';
 
@@ -43,7 +42,7 @@ export default function CreacionScreen() {
             style={styles.input}
             accessibilityLabel="Nombre del cuaderno"
           />
-          <Pressable
+          <HapticPressable
             onPress={crearCuaderno}
             disabled={!nombreCuaderno.trim()}
             accessibilityRole="button"
@@ -55,7 +54,7 @@ export default function CreacionScreen() {
             ]}
           >
             <Text style={styles.createButtonText}>Crear cuaderno</Text>
-          </Pressable>
+          </HapticPressable>
         </View>
 
         <View style={styles.bottom}>
