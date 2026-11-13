@@ -4,5 +4,14 @@
     "location": "us-south1",
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
+  },
+  "auth": {
+    "providers": {
+      "emailPassword": true,
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "base-de-smartstudy",
+        "supportEmail": "support@base-de-smartstudy.firebaseapp.com"
+      }
+    }
   }
 }
