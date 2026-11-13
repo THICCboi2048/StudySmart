@@ -1,12 +1,10 @@
 import { FirebaseError } from 'firebase/app';
 import {
   createUserWithEmailAndPassword,
-  onAuthStateChanged,
   signInWithEmailAndPassword,
   signOut,
-  type User,
 } from 'firebase/auth';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -25,8 +23,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../components/StudyUI';
 import { getFirebaseAuth } from '../services/firebaseAuth';
 import { isFirebaseConfigured } from '../services/firebase';
+import { useAuthSession } from '../hooks/use-auth-session';
 
 type AuthMode = 'login' | 'register';
+
+function firstParam(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
 
 function getErrorMessage(error: unknown): string {
   if (!(error instanceof FirebaseError)) {
@@ -57,51 +60,50 @@ function getErrorMessage(error: unknown): string {
 
 export default function AuthScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{
+    returnTo?: string | string[];
+    notebookId?: string | string[];
+    subject?: string | string[];
+    title?: string | string[];
+  }>();
+  const returnTo = firstParam(params.returnTo);
+  const notebookId = firstParam(params.notebookId);
+  const subject = firstParam(params.subject);
+  const title = firstParam(params.title);
+  const session = useAuthSession();
   const [mode, setMode] = useState<AuthMode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(isFirebaseConfigured);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const user = session.user;
+  const isLoading = session.status === 'loading';
 
   useEffect(() => {
-    if (!isFirebaseConfigured) {
+    if (session.status !== 'signedIn') {
       return;
     }
 
-    let active = true;
-    let unsubscribe: (() => void) | undefined;
+    if (returnTo === 'cuadernos') {
+      router.replace('/cuadernos');
+    } else if (returnTo === 'creacion') {
+      router.replace('/creacion');
+    } else if (returnTo === 'crear-flashcard' && notebookId) {
+      router.replace({ pathname: '/crear-flashcard', params: { notebookId } });
+    } else if (returnTo === 'materia' && notebookId) {
+      router.replace({
+        pathname: '/materia',
+        params: { notebookId, subject: subject || '' },
+      });
+    } else if (returnTo === 'flashcards' && notebookId && title) {
+      router.replace({
+        pathname: '/flashcards',
+        params: { notebookId, subject: subject || '', title },
+      });
+    }
+  }, [notebookId, returnTo, router, session.status, subject, title]);
 
-    void Promise.resolve().then(() => {
-      if (!active) {
-        return;
-      }
-
-      try {
-        unsubscribe = onAuthStateChanged(
-          getFirebaseAuth(),
-          (currentUser) => {
-            setUser(currentUser);
-            setIsLoading(false);
-          },
-          (error) => {
-            setErrorMessage(getErrorMessage(error));
-            setIsLoading(false);
-          }
-        );
-      } catch (error) {
-        setErrorMessage(getErrorMessage(error));
-        setIsLoading(false);
-      }
-    });
-
-    return () => {
-      active = false;
-      unsubscribe?.();
-    };
-  }, []);
 
   async function submitAuthForm(): Promise<void> {
     const normalizedEmail = email.trim();
@@ -204,9 +206,9 @@ export default function AuthScreen() {
                 </View>
                 <Text style={styles.accountLabel}>Sesión iniciada</Text>
                 <Text style={styles.accountEmail}>{user.email}</Text>
-                {errorMessage ? (
+                {errorMessage || session.error ? (
                   <Text accessibilityRole="alert" style={styles.error}>
-                    {errorMessage}
+                    {errorMessage || session.error}
                   </Text>
                 ) : null}
                 <Pressable
@@ -303,9 +305,9 @@ export default function AuthScreen() {
                   </>
                 )}
 
-                {errorMessage ? (
+                {errorMessage || session.error ? (
                   <Text accessibilityRole="alert" style={styles.error}>
-                    {errorMessage}
+                    {errorMessage || session.error}
                   </Text>
                 ) : null}
 

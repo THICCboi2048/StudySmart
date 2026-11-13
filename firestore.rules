@@ -1,18 +1,260 @@
-rules_version='2'
+rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      // This rule allows anyone with your database reference to view, edit,
-      // and delete all data in your database. It is useful for getting
-      // started, but it is configured to expire after 30 days because it
-      // leaves your app open to attackers. At that time, all client
-      // requests to your database will be denied.
-      //
-      // Make sure to write security rules for your app before that time, or
-      // else all client requests to your database will be denied until you
-      // update your rules.
-      allow read, write: if request.time < timestamp.date(2026, 12, 12);
+    // users/{uid}: uid (string), createdAt (timestamp).
+    // users/{uid}/notebooks/{id}: uid, name (1-80 chars), createdAt and updatedAt.
+    // users/{uid}/flashcards/{id}: uid, notebookId, deckTitle (1-100 chars),
+    // front and back (1-2000 chars), createdAt and updatedAt.
+    // users/{uid}/activityDays/{YYYY-MM-DD}: dateKey and createdAt.
+    // users/{uid}/streak/current: currentStreak, lastActivityDate and updatedAt.
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isRegisteredOwner(userId) {
+      return isOwner(userId) &&
+        request.auth.token.firebase.sign_in_provider != 'anonymous';
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.uid;
+    }
+
+    function uidUnchanged() {
+      return !('uid' in request.resource.data) ||
+        request.resource.data.uid == request.auth.uid;
+    }
+
+    function uidNotModified() {
+      return !('uid' in request.resource.data) ||
+        request.resource.data.uid == resource.data.uid;
+    }
+
+    function hasUserProfile(userId) {
+      return exists(
+        /databases/$(database)/documents/users/$(userId)
+      );
+    }
+
+    function hasRequiredFields(data, fields) {
+      return data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(data, fields) {
+      return data.keys().hasOnly(fields);
+    }
+
+    function validString(data, field, minLength, maxLength) {
+      return data[field] is string &&
+        data[field].size() >= minLength &&
+        data[field].size() <= maxLength;
+    }
+
+    function isValidUserProfile(data, userId) {
+      return hasRequiredFields(data, ['uid', 'createdAt']) &&
+        hasOnlyAllowedFields(data, ['uid', 'createdAt']) &&
+        data.uid is string &&
+        data.uid == userId &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidNotebook(data, userId) {
+      return hasRequiredFields(
+          data,
+          ['uid', 'name', 'createdAt', 'updatedAt']
+        ) &&
+        hasOnlyAllowedFields(
+          data,
+          ['uid', 'name', 'createdAt', 'updatedAt']
+        ) &&
+        data.uid is string &&
+        data.uid == userId &&
+        validString(data, 'name', 1, 80) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidFlashcard(data, userId) {
+      return hasRequiredFields(
+          data,
+          [
+            'uid',
+            'notebookId',
+            'deckTitle',
+            'front',
+            'back',
+            'createdAt',
+            'updatedAt'
+          ]
+        ) &&
+        hasOnlyAllowedFields(
+          data,
+          [
+            'uid',
+            'notebookId',
+            'deckTitle',
+            'front',
+            'back',
+            'createdAt',
+            'updatedAt'
+          ]
+        ) &&
+        data.uid is string &&
+        data.uid == userId &&
+        validString(data, 'notebookId', 1, 128) &&
+        validString(data, 'deckTitle', 1, 100) &&
+        validString(data, 'front', 1, 2000) &&
+        validString(data, 'back', 1, 2000) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidDateKey(dateKey) {
+      return dateKey is string && dateKey.matches("^\\d{4}-\\d{2}-\\d{2}$");
+    }
+
+    function isValidActivityDay(data, dateKey) {
+      return hasRequiredFields(data, ['dateKey', 'createdAt']) &&
+        hasOnlyAllowedFields(data, ['dateKey', 'createdAt']) &&
+        isValidDateKey(dateKey) &&
+        data.dateKey == dateKey &&
+        data.createdAt is timestamp &&
+        data.createdAt == request.time;
+    }
+
+    function hasActivityDayAfter(userId, dateKey) {
+      let activityDayPath =
+        /databases/$(database)/documents/users/$(userId)/activityDays/$(dateKey);
+      return existsAfter(activityDayPath) &&
+        getAfter(activityDayPath).data.dateKey == dateKey;
+    }
+
+    function isValidStreak(data, userId) {
+      return hasRequiredFields(
+          data,
+          ['currentStreak', 'lastActivityDate', 'updatedAt']
+        ) &&
+        hasOnlyAllowedFields(
+          data,
+          ['currentStreak', 'lastActivityDate', 'updatedAt']
+        ) &&
+        data.currentStreak is int &&
+        data.currentStreak >= 1 &&
+        data.currentStreak <= 36500 &&
+        isValidDateKey(data.lastActivityDate) &&
+        hasActivityDayAfter(userId, data.lastActivityDate) &&
+        data.updatedAt is timestamp &&
+        data.updatedAt == request.time;
+    }
+
+    function ownsNotebook(userId, notebookId) {
+      let notebookPath =
+        /databases/$(database)/documents/users/$(userId)/notebooks/$(notebookId);
+      return exists(notebookPath) && get(notebookPath).data.uid == userId;
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) &&
+        uidUnchanged() &&
+        isValidUserProfile(request.resource.data, userId) &&
+        request.resource.data.createdAt == request.time;
+
+      match /notebooks/{notebookId} {
+        allow read: if isOwner(userId) &&
+          hasUserProfile(userId) &&
+          isDocOwner();
+        allow create: if isOwner(userId) &&
+          hasUserProfile(userId) &&
+          uidUnchanged() &&
+          isValidNotebook(request.resource.data, userId) &&
+          request.resource.data.createdAt == request.time &&
+          request.resource.data.updatedAt == request.time;
+        allow update: if isOwner(userId) &&
+          hasUserProfile(userId) &&
+          isDocOwner() &&
+          uidNotModified() &&
+          isValidNotebook(request.resource.data, userId) &&
+          request.resource.data.createdAt == resource.data.createdAt &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['name', 'updatedAt']) &&
+          request.resource.data.updatedAt == request.time;
+        allow delete: if isOwner(userId) &&
+          hasUserProfile(userId) &&
+          isDocOwner();
+      }
+
+      match /flashcards/{flashcardId} {
+        allow read: if isOwner(userId) &&
+          hasUserProfile(userId) &&
+          isDocOwner() &&
+          ownsNotebook(userId, resource.data.notebookId);
+        allow create: if isOwner(userId) &&
+          hasUserProfile(userId) &&
+          uidUnchanged() &&
+          isValidFlashcard(request.resource.data, userId) &&
+          ownsNotebook(userId, request.resource.data.notebookId) &&
+          request.resource.data.createdAt == request.time &&
+          request.resource.data.updatedAt == request.time;
+        allow update: if isOwner(userId) &&
+          hasUserProfile(userId) &&
+          isDocOwner() &&
+          uidNotModified() &&
+          isValidFlashcard(request.resource.data, userId) &&
+          ownsNotebook(userId, request.resource.data.notebookId) &&
+          request.resource.data.notebookId == resource.data.notebookId &&
+          request.resource.data.createdAt == resource.data.createdAt &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['deckTitle', 'front', 'back', 'updatedAt']) &&
+          request.resource.data.updatedAt == request.time;
+        allow delete: if isOwner(userId) &&
+          hasUserProfile(userId) &&
+          isDocOwner() &&
+          ownsNotebook(userId, resource.data.notebookId);
+      }
+
+      match /activityDays/{dateKey} {
+        allow get: if isRegisteredOwner(userId) &&
+          hasUserProfile(userId);
+        allow create: if isRegisteredOwner(userId) &&
+          hasUserProfile(userId) &&
+          isValidActivityDay(request.resource.data, dateKey);
+      }
+
+      match /streak/{streakId} {
+        allow get: if isRegisteredOwner(userId) &&
+          hasUserProfile(userId);
+        allow create: if isRegisteredOwner(userId) &&
+          hasUserProfile(userId) &&
+          streakId == 'current' &&
+          isValidStreak(request.resource.data, userId) &&
+          request.resource.data.currentStreak == 1;
+        allow update: if isRegisteredOwner(userId) &&
+          hasUserProfile(userId) &&
+          streakId == 'current' &&
+          isValidStreak(request.resource.data, userId) &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['currentStreak', 'lastActivityDate', 'updatedAt']) &&
+          (
+            (
+              request.resource.data.lastActivityDate == resource.data.lastActivityDate &&
+              request.resource.data.currentStreak == resource.data.currentStreak
+            ) ||
+            (
+              request.resource.data.lastActivityDate != resource.data.lastActivityDate &&
+              (
+                request.resource.data.currentStreak == 1 ||
+                request.resource.data.currentStreak == resource.data.currentStreak + 1
+              )
+            )
+          );
+      }
     }
   }
 }

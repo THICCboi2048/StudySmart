@@ -4,12 +4,17 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
 
 ## Firebase Authentication
 
-The Perfil section includes email/password sign-in, registration, and sign-out. To connect it:
+The Perfil section includes email/password sign-in, registration, and sign-out. Cuadernos and
+flashcards are stored in Firestore under the signed-in user's UID; creating or viewing personal
+study data requires a session.
+
+To connect it:
 
 1. Register a Web app in the `base-de-smartstudy` Firebase project.
 2. Enable **Email/Password** in Firebase Console under Authentication > Sign-in method.
 3. Copy `.env.example` to `.env.local` and fill in the Web app's Firebase config values.
 4. Restart Expo after changing environment variables.
+5. Deploy the Firestore security rules with `firebase deploy --only firestore:rules`.
 
 The client config values are public Firebase identifiers; keep server credentials and service
 account keys out of the app.

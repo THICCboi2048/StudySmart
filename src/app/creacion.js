@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   SafeAreaView,
   StyleSheet,
@@ -10,22 +10,33 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { BottomBar, colors } from '../components/StudyUI';
-import { addNotebook, DuplicateNotebookError } from '../services/notebooks';
+import { useAuthSession } from '../hooks/use-auth-session';
+import {
+  createUserNotebook,
+  DuplicateNotebookError,
+} from '../services/study-data';
 
 export default function CreacionScreen() {
   const [nombreCuaderno, setNombreCuaderno] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const router = useRouter();
+  const session = useAuthSession();
+
+  useEffect(() => {
+    if (session.status === 'signedOut') {
+      router.replace({ pathname: '/auth', params: { returnTo: 'creacion' } });
+    }
+  }, [router, session.status]);
 
   async function crearCuaderno() {
     const nombre = nombreCuaderno.trim();
-    if (!nombre) return;
+    if (!nombre || session.status !== 'signedIn') return;
 
     setIsSaving(true);
     setErrorMessage('');
     try {
-      await addNotebook(nombre);
+      await createUserNotebook(session.user.uid, nombre);
       router.replace('/cuadernos');
     } catch (error) {
       setErrorMessage(
@@ -40,6 +51,21 @@ export default function CreacionScreen() {
 
   function cancelarCreacion() {
     router.replace('/cuadernos');
+  }
+
+  if (session.status !== 'signedIn') {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.container}>
+          <ActivityIndicator color={colors.purple} />
+          {session.status === 'error' ? (
+            <Text accessibilityRole="alert" style={styles.error}>
+              {session.error}
+            </Text>
+          ) : null}
+        </View>
+      </SafeAreaView>
+    );
   }
 
   return (

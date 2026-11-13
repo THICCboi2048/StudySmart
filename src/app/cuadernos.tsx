@@ -17,7 +17,8 @@ import {
   StudyButton,
   colors,
 } from '../components/StudyUI';
-import { DEFAULT_NOTEBOOKS, getNotebooks } from '../services/notebooks';
+import { useAuthSession } from '../hooks/use-auth-session';
+import { getUserNotebooks, type Notebook } from '../services/study-data';
 
 const iconos: React.ComponentProps<typeof Ionicons>['name'][] = [
   'color-palette-outline',
@@ -28,17 +29,24 @@ const iconos: React.ComponentProps<typeof Ionicons>['name'][] = [
 
 export default function CuadernosScreen() {
   const router = useRouter();
-  const [materias, setMaterias] = useState<string[]>(DEFAULT_NOTEBOOKS);
-  const [isLoading, setIsLoading] = useState(true);
+  const session = useAuthSession();
+  const [notebooks, setNotebooks] = useState<Notebook[]>([]);
+  const [loadedUid, setLoadedUid] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
-    let isActive = true;
+    if (session.status !== 'signedIn') {
+      return;
+    }
 
-    getNotebooks()
+    let isActive = true;
+    const uid = session.user.uid;
+
+    getUserNotebooks(uid)
       .then((notebooks) => {
         if (isActive) {
-          setMaterias(notebooks);
+          setNotebooks(notebooks);
+          setErrorMessage('');
         }
       })
       .catch(() => {
@@ -48,14 +56,18 @@ export default function CuadernosScreen() {
       })
       .finally(() => {
         if (isActive) {
-          setIsLoading(false);
+          setLoadedUid(uid);
         }
       });
 
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [session.status, session.user?.uid]);
+
+  const isLoading =
+    session.status === 'loading' ||
+    (session.status === 'signedIn' && loadedUid !== session.user.uid);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -82,7 +94,27 @@ export default function CuadernosScreen() {
         </Text>
 
         <View style={styles.list}>
-          {isLoading ? (
+          {session.status === 'signedOut' ? (
+            <>
+              <Text style={styles.emptyText}>
+                Inicia sesión para ver y crear tus cuadernos.
+              </Text>
+              <StudyButton
+                title="Iniciar sesión"
+                icon="person-outline"
+                onPress={() =>
+                  router.push({
+                    pathname: '/auth',
+                    params: { returnTo: 'cuadernos' },
+                  })
+                }
+              />
+            </>
+          ) : session.status === 'error' ? (
+            <Text accessibilityRole="alert" style={styles.error}>
+              {session.error}
+            </Text>
+          ) : isLoading ? (
             <ActivityIndicator
               size="large"
               color={colors.purple}
@@ -92,15 +124,22 @@ export default function CuadernosScreen() {
             <Text accessibilityRole="alert" style={styles.error}>
               {errorMessage}
             </Text>
-          ) : materias.map((materia, index) => (
+          ) : notebooks.length === 0 ? (
+            <Text style={styles.emptyText}>
+              Aún no tienes cuadernos. Pulsa Añadir para crear el primero.
+            </Text>
+          ) : notebooks.map((notebook, index) => (
             <StudyButton
-              key={materia}
-              title={materia}
+              key={notebook.id}
+              title={notebook.name}
               icon={iconos[index % iconos.length]}
               onPress={() =>
                 router.push({
                   pathname: '/materia',
-                  params: { subject: materia },
+                  params: {
+                    notebookId: notebook.id,
+                    subject: notebook.name,
+                  },
                 })
               }
             />
@@ -156,6 +195,12 @@ const styles = StyleSheet.create({
     color: '#B3261E',
     fontSize: 14,
     lineHeight: 20,
+  },
+  emptyText: {
+    color: colors.muted,
+    fontSize: 15,
+    lineHeight: 22,
+    marginBottom: 16,
   },
   bottom: {
     marginTop: 'auto',

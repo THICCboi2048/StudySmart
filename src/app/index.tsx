@@ -1,16 +1,69 @@
 
 import {
+  ActivityIndicator,
   View,
   Text,
   StyleSheet,
   SafeAreaView,
+  Pressable,
 } from 'react-native';
 
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+
 import { BottomBar, colors } from '../components/StudyUI';
+import { useAuthSession } from '../hooks/use-auth-session';
+import { getUserStreak, type UserStreak } from '../services/study-data';
 
 export default function HomeScreen() {
-  const diasRacha: number = 7;
+  const router = useRouter();
+  const session = useAuthSession();
+  const [streak, setStreak] = useState<UserStreak>({
+    currentStreak: 0,
+    lastActivityDate: null,
+  });
+  const [loadedUid, setLoadedUid] = useState('');
+  const [streakError, setStreakError] = useState('');
+  const registeredUser =
+    session.status === 'signedIn' && !session.user.isAnonymous;
+
+  useFocusEffect(
+    useCallback(() => {
+      if (session.status !== 'signedIn' || session.user.isAnonymous) {
+        return;
+      }
+
+      let active = true;
+      const uid = session.user.uid;
+
+      getUserStreak(uid)
+        .then((value) => {
+          if (active) {
+            setStreak(value);
+            setStreakError('');
+          }
+        })
+        .catch(() => {
+          if (active) {
+            setStreakError('No se pudo cargar tu racha. Inténtalo de nuevo.');
+          }
+        })
+        .finally(() => {
+          if (active) {
+            setLoadedUid(uid);
+          }
+        });
+
+      return () => {
+        active = false;
+      };
+    }, [session.status, session.user])
+  );
+
+  const isLoading =
+    session.status === 'loading' ||
+    (registeredUser && session.status === 'signedIn' && loadedUid !== session.user.uid);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -36,23 +89,53 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.streakCard}>
-          <Text style={styles.streakTitle}>
-            Tu racha de estudio
-          </Text>
-
-          <Ionicons
-            name="flame"
-            size={100}
-            color="#D97736"
-          />
-
-          <Text style={styles.streakNumber}>
-            {diasRacha} días
-          </Text>
-
-          <Text style={styles.streakDescription}>
-            ¡Sigue así! Estás creando un gran hábito.
-          </Text>
+          {registeredUser ? (
+            <>
+              <Text style={styles.streakTitle}>Tu racha de estudio</Text>
+              <Ionicons name="flame" size={100} color="#D97736" />
+              {isLoading ? (
+                <ActivityIndicator
+                  color={colors.purple}
+                  accessibilityLabel="Cargando tu racha"
+                />
+              ) : streakError ? (
+                <Text accessibilityRole="alert" style={styles.error}>
+                  {streakError}
+                </Text>
+              ) : (
+                <>
+                  <Text style={styles.streakNumber}>
+                    {streak.currentStreak}{' '}
+                    {streak.currentStreak === 1 ? 'día' : 'días'}
+                  </Text>
+                  <Text style={styles.streakDescription}>
+                    {streak.currentStreak > 0
+                      ? '¡Sigue así! Estás creando un gran hábito.'
+                      : 'Interactúa con un cuaderno o una flashcard para empezar.'}
+                  </Text>
+                </>
+              )}
+            </>
+          ) : (
+            <>
+              <Text style={styles.streakTitle}>Tu racha de estudio</Text>
+              <Text style={styles.streakDescription}>
+                {session.status === 'error'
+                  ? session.error
+                  : 'Inicia sesión con una cuenta registrada para llevar tu racha diaria.'}
+              </Text>
+              {session.status === 'signedOut' ||
+              (session.status === 'signedIn' && session.user.isAnonymous) ? (
+                <Pressable
+                  onPress={() => router.push('/auth')}
+                  accessibilityRole="button"
+                  style={styles.signInButton}
+                >
+                  <Text style={styles.signInButtonText}>Iniciar sesión</Text>
+                </Pressable>
+              ) : null}
+            </>
+          )}
         </View>
 
         <View style={styles.bottom}>
@@ -127,6 +210,26 @@ const styles = StyleSheet.create({
     color: colors.muted,
     textAlign: 'center',
     marginTop: 10,
+  },
+  error: {
+    color: '#B3261E',
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: 'center',
+  },
+  signInButton: {
+    minHeight: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.purple,
+    borderRadius: 15,
+    paddingHorizontal: 20,
+    marginTop: 18,
+  },
+  signInButtonText: {
+    color: colors.white,
+    fontSize: 15,
+    fontWeight: '700',
   },
   bottom: {
     marginTop: 'auto',

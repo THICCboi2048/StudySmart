@@ -38,6 +38,9 @@ export function StudyButton({ title, onPress, icon }) {
   );
 }
 
+/**
+ * @param {{ active?: string, showAdd?: boolean, onAdd?: () => void, addLabel?: string, addIcon?: string }} props
+ */
 export function BottomBar({
   active = 'home',
   showAdd = true,
