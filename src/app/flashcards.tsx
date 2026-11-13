@@ -15,6 +15,7 @@ import { useEffect, useRef, useState } from 'react';
 import { BottomBar, colors } from '../components/StudyUI';
 import { useAuthSession } from '../hooks/use-auth-session';
 import {
+  getActivityDateKey,
   getUserFlashcards,
   recordUserActivity,
   type Flashcard,
@@ -91,24 +92,25 @@ export default function FlashcardsScreen() {
     }
 
     const uid = session.user.uid;
+    const activityKey = `${uid}:${getActivityDateKey(new Date())}`;
     if (
-      activityRecordedFor.current === uid ||
-      activityPendingFor.current === uid
+      activityRecordedFor.current === activityKey ||
+      activityPendingFor.current === activityKey
     ) {
       return;
     }
 
-    activityPendingFor.current = uid;
+    activityPendingFor.current = activityKey;
     setActivityError('');
     void recordUserActivity(uid)
       .then(() => {
-        activityRecordedFor.current = uid;
+        activityRecordedFor.current = activityKey;
       })
       .catch(() => {
         setActivityError('No se pudo actualizar tu racha diaria.');
       })
       .finally(() => {
-        if (activityPendingFor.current === uid) {
+        if (activityPendingFor.current === activityKey) {
           activityPendingFor.current = null;
         }
       });
