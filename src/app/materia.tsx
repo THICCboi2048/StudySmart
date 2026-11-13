@@ -17,7 +17,7 @@ import {
 } from '../components/StudyUI';
 import { useNotebooks } from '../context/NotebookContext';
 import { useAuthSession } from '../hooks/use-auth-session';
-import { getUserFlashcards, recordUserActivity } from '../services/study-data';
+import { getUserFlashcards } from '../services/study-data';
 
 type DeckSummary = { id: string; title: string };
 
@@ -43,7 +43,6 @@ export default function MateriaScreen() {
   const [decks, setDecks] = useState<DeckSummary[]>([]);
   const [loadedKey, setLoadedKey] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
-  const [activityError, setActivityError] = useState('');
 
   useEffect(() => {
     if (session.status !== 'signedIn' || !notebookId) {
@@ -66,14 +65,6 @@ export default function MateriaScreen() {
           });
           setDecks([...decksById.values()]);
           setErrorMessage('');
-          setActivityError('');
-          if (!session.user.isAnonymous) {
-            void recordUserActivity(uid).catch(() => {
-              if (active) {
-                setActivityError('No se pudo actualizar tu racha diaria.');
-              }
-            });
-          }
         }
       })
       .catch(() => {
@@ -182,12 +173,6 @@ export default function MateriaScreen() {
             )}
           </>
         )}
-        {activityError ? (
-          <Text accessibilityRole="alert" style={styles.error}>
-            {activityError}
-          </Text>
-        ) : null}
-
         <Text style={styles.sectionTitle}>
           NOTAS
         </Text>
